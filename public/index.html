@@ -704,6 +704,10 @@
               <span id="label-claude-quota" style="color:#8b949e;">🧠 Quota Claude (5h / Settimana):</span>
               <strong id="global-claude-quota" style="color:#3fb950;">-- / --</strong>
             </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span id="label-argon-quota" style="color:#8b949e;">⚡ Quota Gemini Argon (Sett.):</span>
+              <strong id="global-argon-quota" style="color:#e3b341;">--</strong>
+            </div>
           </div>
         </div>
 
@@ -941,6 +945,7 @@
           idle: 'In attesa di istruzioni (Idle)',
           geminiQuota: '🤖 Quota Gemini (5h / Settimana):',
           claudeQuota: '🧠 Quota Claude (5h / Settimana):',
+          argonQuota: '⚡ Quota Gemini Argon (Sett.):',
           weeklyShort: 'sett.',
           permReq: '⚠️ AUTORIZZAZIONE RICHIESTA',
           approve: '✅ Autorizza',
@@ -989,6 +994,7 @@
           idle: 'Waiting for instructions (Idle)',
           geminiQuota: '🤖 Gemini Quota (5h / Weekly):',
           claudeQuota: '🧠 Claude Quota (5h / Weekly):',
+          argonQuota: '⚡ Gemini Argon Quota (Weekly):',
           weeklyShort: 'weekly',
           permReq: '⚠️ PERMISSION REQUIRED',
           approve: '✅ Approve',
@@ -1041,6 +1047,7 @@
         const lb = document.getElementById('topbar-live-badge'); if (lb) lb.textContent = t.liveBadge;
         const lGem = document.getElementById('label-gemini-quota'); if (lGem) lGem.textContent = t.geminiQuota;
         const lCla = document.getElementById('label-claude-quota'); if (lCla) lCla.textContent = t.claudeQuota;
+        const lArg = document.getElementById('label-argon-quota'); if (lArg) lArg.textContent = t.argonQuota;
         const lPerm = document.getElementById('label-perm-badge'); if (lPerm) lPerm.textContent = t.permReq;
         const bApp = document.getElementById('btn-perm-approve'); if (bApp) bApp.textContent = t.approve;
         const bRej = document.getElementById('btn-perm-reject'); if (bRej) bRej.textContent = t.reject;
@@ -1142,6 +1149,7 @@
       const agentModelName = document.getElementById('agent-model-name');
       const globalGeminiQuota = document.getElementById('global-gemini-quota');
       const globalClaudeQuota = document.getElementById('global-claude-quota');
+      const globalArgonQuota = document.getElementById('global-argon-quota');
 
       let liveGlobalQuota = null;
 
@@ -1195,6 +1203,12 @@
             const c5hNum = c.fiveHourFraction || 0;
             globalClaudeQuota.textContent = `${c.fiveHour} (5h, reset ${hm(c.reset5h)}) | ${c.weekly} (${t.weeklyShort})`;
             globalClaudeQuota.style.color = c5hNum < 0.02 ? '#da3633' : (c5hNum < 0.25 ? '#d29922' : (liveGlobalQuota.fallbackToClaude ? '#bc8cff' : '#3fb950'));
+          }
+          if (globalArgonQuota && liveGlobalQuota.argon) {
+            const ar = liveGlobalQuota.argon;
+            const arNum = ar.weeklyFraction || 0;
+            globalArgonQuota.textContent = `${ar.weekly} (${t.weeklyShort})`;
+            globalArgonQuota.style.color = arNum < 0.02 ? '#da3633' : (arNum < 0.25 ? '#e3b341' : '#3fb950');
           }
         }
       }
@@ -1430,6 +1444,14 @@
 
       renderPills();
       selectAgent(10);
+
+      // Fetch immediato quote all'apertura pagina
+      fetch('/api/quota').then(r => r.json()).then(res => {
+        if (res && res.ok && res.data) {
+          liveGlobalQuota = res.data;
+          updateTokenDisplay(selectedId);
+        }
+      }).catch(() => {});
 
       // Sincronizzazione WebSocket Live con il Server
       const ws = new WebSocket(`ws://${window.location.host}/ws`);

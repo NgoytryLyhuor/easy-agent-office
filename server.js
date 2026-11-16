@@ -1047,17 +1047,20 @@ async function getLiveQuotaAndModels() {
     const nm = g => (g.displayName || '').toLowerCase();
     let geminiGroup = groups.find(g => nm(g).includes('gemini') && !nm(g).includes('argon'));
     let claudeGroup = groups.find(g => nm(g).includes('claude'));
+    let argonGroup = groups.find(g => nm(g).includes('argon'));
     const findB = (grp, re) => grp?.buckets?.find(b => re.test(String(b.window || '')));
 
     const g5h = findB(geminiGroup, /^5h$/) || findB(geminiGroup, /5h/);
     const gWeekly = findB(geminiGroup, /^weekly$/) || findB(geminiGroup, /weekly/);
     const c5h = findB(claudeGroup, /^3p-5h$/) || findB(claudeGroup, /5h/);
     const cWeekly = findB(claudeGroup, /^3p-weekly$/) || findB(claudeGroup, /weekly/);
+    const aWeekly = findB(argonGroup, /weekly/) || argonGroup?.buckets?.[0];
 
     const g5hFrac = g5h ? (Number(g5h.remainingFraction) || 0) : 0;
     const gWeeklyFrac = gWeekly ? (Number(gWeekly.remainingFraction) || 0) : 0;
     const c5hFrac = c5h ? (Number(c5h.remainingFraction) || 0) : 1;
     const cWeeklyFrac = cWeekly ? (Number(cWeekly.remainingFraction) || 0) : 1;
+    const aWeeklyFrac = aWeekly ? (Number(aWeekly.remainingFraction) || 0) : 0;
 
     // Calcolo orari di reset (HH:MM) di Gemini e Claude e primo risveglio utile
     const fmtHM = v => { const d = new Date(v); return isNaN(d) ? (v || 'N/A') : d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }); };
@@ -1157,6 +1160,11 @@ async function getLiveQuotaAndModels() {
         reset5h: c5h?.resetTime || 'N/A',
         resetWeekly: cWeekly?.resetTime || 'N/A'
       },
+      argon: {
+        weekly: `${(aWeeklyFrac * 100).toFixed(1)}%`,
+        weeklyFraction: aWeeklyFrac,
+        resetWeekly: aWeekly?.resetTime || 'N/A'
+      },
       fallbackToClaude,
       mode: tr.mode,
       resting,
@@ -1181,6 +1189,9 @@ app.get('/api/quota', async (req, res) => {
     res.status(503).json({ ok: false, error: 'Language server offline o non raggiungibile' });
   }
 });
+
+// Carica subito le quote all'avvio del server
+getLiveQuotaAndModels().then(data => { if (data) broadcast({ type: 'liveQuotaUpdate', quota: data }); }).catch(() => {});
 
 // Broadcast periodico telemetria quote via WebSocket e su Discord #📊-monitor-usage
 setInterval(async () => {
