@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType } = require('discord.js');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -102,6 +102,121 @@ try {
 let client = null;
 let broadcastCallback = null;
 
+function dispatchTaskToSubagent(targetId, targetName, content, username = 'Discord', onDone = null) {
+  const activeProj = routing.getTargetProject();
+  const msgContent = `[Progetto Target Attivo: ${activeProj}] Messaggio operativo ricevuto da Discord (${username}): ${content}`;
+
+  getActiveDaemonConfig().then(daemonCfg => {
+    const childEnv = Object.assign({}, process.env);
+    if (daemonCfg && daemonCfg.httpPort) {
+      childEnv.ANTIGRAVITY_LS_ADDRESS = `127.0.0.1:${daemonCfg.httpPort}`;
+    }
+    if (daemonCfg && daemonCfg.csrfToken) {
+      childEnv.ANTIGRAVITY_CSRF_TOKEN = daemonCfg.csrfToken;
+    }
+
+    execFile(resolveLanguageServer(), ['agentapi', 'send-message', routing.resolveSubagent(targetId), msgContent], { timeout: 15000, windowsHide: true, env: childEnv }, (err, stdout, stderr) => {
+      if (err) {
+        console.warn(`[Discord Bot] Errore recapito a ${targetName}: ${err.message}`);
+        if (onDone) onDone(err);
+      } else {
+        if (broadcastCallback) {
+          broadcastCallback({
+            type: 'agentActivity',
+            id: targetId,
+            agentId: targetId,
+            tool: 'Discord Inbound',
+            status: `Task da Discord: ${content.slice(0, 50)}`,
+            log: `[${new Date().toLocaleTimeString()}] 💬 Ricevuto da Discord (${username}): "${content}"`
+          });
+        }
+        if (onDone) onDone(null);
+      }
+    });
+  }).catch(daemonErr => {
+    console.warn(`[Discord Bot] Errore interno connessione Antigravity: ${daemonErr.message}`);
+    if (onDone) onDone(daemonErr);
+  });
+}
+
+function buildPanelActionRows() {
+  const row1 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('panel_ceo_report').setLabel('📊 Report CEO').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('panel_standup').setLabel('📢 Standup Meeting').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('panel_team_status').setLabel('👥 Stato Squadra').setStyle(ButtonStyle.Secondary)
+  );
+  const row2 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('panel_security_audit').setLabel('🛡️ Audit Sicurezza').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('panel_git_check').setLabel('🐙 Git Check').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('panel_refresh_quota').setLabel('🔄 Aggiorna Quote').setStyle(ButtonStyle.Primary)
+  );
+  return [row1, row2];
+}
+
+function getControlPanelEmbed() {
+  return new EmbedBuilder()
+    .setTitle('🎛️ Centro di Comando Rapido — AziendaAI')
+    .setDescription('Seleziona un pulsante per impartire un ordine immediato ad **Alberto (CEO)**.\nOgni richiesta verrà inoltrata nella sua chat operativa.')
+    .setColor(0x58a6ff)
+    .addFields(
+      { name: '📊 Report CEO', value: 'Genera il report esecutivo sprint', inline: true },
+      { name: '📢 Standup Meeting', value: 'Convoca la riunione generale', inline: true },
+      { name: '👥 Stato Squadra', value: 'Check attività e agenti attivi', inline: true },
+      { name: '🛡️ Audit Sicurezza', value: 'Ispezione codice e dipendenze', inline: true },
+      { name: '🐙 Git Check', value: 'Verifica branch e modifiche git', inline: true },
+      { name: '🔄 Aggiorna Quote', value: 'Sincronizza telemetria quote live', inline: true }
+    )
+    .setFooter({ text: 'AziendaAI Control Panel • Digita !panel per rigenerare questo pannello' })
+    .setTimestamp();
+}
+
+async function renderControlPanelMessage(channel) {
+  try {
+    const rows = buildPanelActionRows();
+    const embed = getControlPanelEmbed();
+    const msgs = await channel.messages.fetch({ limit: 10 }).catch(() => null);
+    if (msgs && msgs.size > 0) {
+      const existingMsg = msgs.find(m => m.author.id === client.user.id && m.components && m.components.length > 0);
+      if (existingMsg) {
+        await existingMsg.edit({ embeds: [embed], components: rows }).catch(() => {});
+        return;
+      }
+    }
+    await channel.send({ embeds: [embed], components: rows }).catch(err => {
+      console.warn('[Discord Bot] Invio pannello di controllo fallito:', err.message);
+    });
+  } catch (err) {
+    console.warn('[Discord Bot] renderControlPanelMessage error:', err.message);
+  }
+}
+
+async function ensureControlPanel(guild) {
+  try {
+    await guild.channels.fetch().catch(() => {});
+    let panelChannel = guild.channels.cache.find(c => c.isTextBased() && c.name.includes('pannello-controllo'));
+    const salaChannel = guild.channels.cache.find(c => c.isTextBased() && c.name.includes('sala-operativa'));
+    const parentCategory = salaChannel ? salaChannel.parentId : null;
+
+    if (!panelChannel) {
+      panelChannel = await guild.channels.create({
+        name: '🎛️-pannello-controllo',
+        type: ChannelType.GuildText,
+        parent: parentCategory,
+        topic: '🎛️ Pannello di controllo interattivo per inviare ordini rapidi ad Alberto (CEO).'
+      }).catch(err => {
+        console.warn('[Discord Bot] Creazione canale pannello-controllo non riuscita:', err.message);
+        return null;
+      });
+    }
+
+    if (panelChannel) {
+      await renderControlPanelMessage(panelChannel);
+    }
+  } catch (err) {
+    console.warn('[Discord Bot] ensureControlPanel error:', err.message);
+  }
+}
+
 function initDiscordBot(onBroadcast) {
   broadcastCallback = onBroadcast;
 
@@ -120,8 +235,11 @@ function initDiscordBot(onBroadcast) {
     if (pendingAnnouncements.length > 0) {
       const queued = pendingAnnouncements.splice(0, pendingAnnouncements.length);
       for (const item of queued) {
-        await sendDiscordAnnouncement(item.text, item.color);
+        await sendDiscordAnnouncement(item.text, item.color, item.modeKey);
       }
+    }
+    for (const guild of client.guilds.cache.values()) {
+      await ensureControlPanel(guild);
     }
   });
 
@@ -143,6 +261,22 @@ function initDiscordBot(onBroadcast) {
     }
 
     const content = message.content.trim();
+    if (content.toLowerCase().startsWith('!panel')) {
+      for (const guild of client.guilds.cache.values()) {
+        await ensureControlPanel(guild);
+      }
+      if (channelName.includes('pannello-controllo')) {
+        try { await message.delete().catch(() => {}); } catch {}
+      } else {
+        await message.channel.send('✅ **Pannello di controllo sincronizzato** nel canale `#🎛️-pannello-controllo`!').catch(() => {});
+      }
+      return;
+    }
+
+    if (channelName.includes('pannello-controllo')) {
+      try { await message.delete().catch(() => {}); } catch {}
+      return;
+    }
     if (content.toLowerCase().startsWith('!project') || content.toLowerCase().startsWith('!workspace') || content.toLowerCase().startsWith('!progetto')) {
       const arg = content.replace(/^!(project|workspace|progetto)\s*/i, '').trim();
       if (!arg || arg.toLowerCase() === 'list') {
@@ -205,46 +339,84 @@ function initDiscordBot(onBroadcast) {
       await message.react('⚡');
     } catch {}
 
-    const activeProj = routing.getTargetProject();
-    const msgContent = `[Progetto Target Attivo: ${activeProj}] Messaggio operativo ricevuto da Discord (${message.author.username}): ${content}`;
-
-    getActiveDaemonConfig().then(daemonCfg => {
-      const childEnv = Object.assign({}, process.env);
-      if (daemonCfg && daemonCfg.httpPort) {
-        childEnv.ANTIGRAVITY_LS_ADDRESS = `127.0.0.1:${daemonCfg.httpPort}`;
+    dispatchTaskToSubagent(target.id, target.name, content, message.author.username, (err) => {
+      if (err) {
+        message.channel.send(`❌ Errore recapito a ${target.name}: ${err.message}`).catch(() => {});
+      } else {
+        try { message.react('✅'); } catch {}
       }
-      if (daemonCfg && daemonCfg.csrfToken) {
-        childEnv.ANTIGRAVITY_CSRF_TOKEN = daemonCfg.csrfToken;
-      }
-
-      execFile(resolveLanguageServer(), ['agentapi', 'send-message', routing.resolveSubagent(target.id), msgContent], { timeout: 15000, windowsHide: true, env: childEnv }, (err, stdout, stderr) => {
-        if (err) {
-          message.channel.send(`❌ Errore recapito a ${target.name}: ${err.message}`).catch(() => {});
-        } else {
-          try {
-            message.react('✅');
-          } catch {}
-
-          if (broadcastCallback) {
-            broadcastCallback({
-              type: 'agentActivity',
-              id: target.id,
-              agentId: target.id,
-              tool: 'Discord Inbound',
-              status: `Task da Discord: ${content.slice(0, 50)}`,
-              log: `[${new Date().toLocaleTimeString()}] 💬 Ricevuto da Discord (${message.author.username}): "${content}"`
-            });
-          }
-        }
-      });
-    }).catch(daemonErr => {
-      message.channel.send(`❌ Errore interno connessione Antigravity: ${daemonErr.message}`).catch(() => {});
     });
   });
 
   // Gestione pulsanti interattivi di autorizzazione permessi su Discord
   client.on('interactionCreate', async interaction => {
     if (!interaction.isButton()) return;
+
+    if (interaction.customId.startsWith('panel_')) {
+      await interaction.reply({
+        content: '⚡ Ordine inviato nella chat di Alberto',
+        ephemeral: true
+      }).catch(() => {});
+
+      const userTag = interaction.user.tag || interaction.user.username;
+      let actionTitle = '';
+      let actionInstruction = '';
+
+      switch (interaction.customId) {
+        case 'panel_ceo_report':
+          actionTitle = '📊 Richiesta Report Esecutivo CEO';
+          actionInstruction = 'Genera subito il report esecutivo CEO per il progetto e allinea lo stato sprint.';
+          break;
+        case 'panel_standup':
+          actionTitle = '📢 Convocazione Riunione Generale (Standup Meeting)';
+          actionInstruction = 'Convoca subito uno Standup Meeting generale con Luigi, Gabri e Carlo per sincronizzare i task.';
+          if (broadcastCallback) {
+            broadcastCallback({
+              type: 'standupMeetingStarted',
+              leaderId: 10,
+              leaderName: 'Alberto (CEO)',
+              topic: 'Standup convocato da Pannello di Controllo Discord',
+              durationMs: 15000
+            });
+          }
+          break;
+        case 'panel_team_status':
+          actionTitle = '👥 Richiesta Verifica Stato Squadra';
+          actionInstruction = 'Verifica lo stato operativo della squadra (Luigi, Gabri, Carlo) e riepiloga la situazione corrente.';
+          break;
+        case 'panel_security_audit':
+          actionTitle = '🛡️ Richiesta Audit Sicurezza';
+          actionInstruction = 'Coordina con Carlo un audit di sicurezza completo del backend, routing e dipendenze.';
+          break;
+        case 'panel_git_check':
+          actionTitle = '🐙 Richiesta Git Status & Check';
+          actionInstruction = 'Controlla lo stato git del repository (git status, branch, file modificati).';
+          break;
+        case 'panel_refresh_quota':
+          actionTitle = '🔄 Richiesta Sincronizzazione Telemetria Quote';
+          actionInstruction = 'Aggiorna e verifica le quote live di Gemini e Claude e sincronizza la telemetria.';
+          break;
+        default:
+          actionTitle = '⚡ Ordine Operativo';
+          actionInstruction = `Esegui comando: ${interaction.customId}`;
+      }
+
+      const guild = interaction.guild;
+      if (guild) {
+        const albertoChannel = guild.channels.cache.find(c => c.isTextBased() && (c.name.includes('alberto') || c.name.includes('ceo')));
+        if (albertoChannel) {
+          const embedForward = new EmbedBuilder()
+            .setTitle(actionTitle)
+            .setDescription(`**Mittente:** <@${interaction.user.id}> (\`${userTag}\`)\n**Istruzione inoltrata:**\n> ${actionInstruction}`)
+            .setColor(0x58a6ff)
+            .setTimestamp();
+          await albertoChannel.send({ embeds: [embedForward] }).catch(err => console.warn('[Discord Bot] Inoltro su canale Alberto fallito:', err.message));
+        }
+      }
+
+      dispatchTaskToSubagent(10, 'Alberto (CEO)', actionInstruction, userTag);
+      return;
+    }
 
     const [action, requestId, agentIdStr] = interaction.customId.split('_');
     const agentId = Number(agentIdStr) || 10;
@@ -436,16 +608,25 @@ async function sendDiscordAnnouncement(text, color, modeKey = null) {
   if (modeKey) {
     const lastKey = getLastAnnouncedMode();
     if (lastKey === modeKey) return; // Già annunciato questo stato, non inviare duplicati!
-    setLastAnnouncedMode(modeKey);
   }
   if (!client || !client.isReady()) {
-    pendingAnnouncements.push({ text, color });
+    pendingAnnouncements.push({ text, color, modeKey });
     return;
   }
+  let sent = false;
   const embed = new EmbedBuilder().setTitle('🔄 Stato Operativo Squadra & Quote').setDescription(text).setColor(color || 0x58a6ff).setTimestamp();
   for (const guild of client.guilds.cache.values()) {
     const channel = guild.channels.cache.find(c => c.isTextBased() && c.name.includes('sala-operativa'));
-    if (channel) await channel.send({ embeds: [embed] }).catch(e => console.warn('[Discord Bot] Annuncio fallito:', e.message));
+    if (channel) {
+      const res = await channel.send({ embeds: [embed] }).catch(e => console.warn('[Discord Bot] Annuncio fallito:', e.message));
+      if (res) sent = true;
+    }
+  }
+  if (sent && modeKey) {
+    setLastAnnouncedMode(modeKey);
+    if (typeof routing.setLastDiskMode === 'function') {
+      routing.setLastDiskMode(modeKey);
+    }
   }
 }
 
@@ -455,5 +636,7 @@ module.exports = {
   sendFinalAgentResponse,
   sendDiscordPermissionPrompt,
   updateDiscordUsageMonitor,
+  ensureControlPanel,
+  renderControlPanelMessage,
   getClient: () => client
 };

@@ -36,10 +36,19 @@ try {
   }
 } catch (_) {}
 
+const LAST_MODE_FILE = path.join(__dirname, '.last_announced_mode');
+let lastDiskMode = null;
+try {
+  if (fs.existsSync(LAST_MODE_FILE)) {
+    lastDiskMode = fs.readFileSync(LAST_MODE_FILE, 'utf8').trim() || null;
+  }
+} catch (_) {}
+
 // Stati: 'gemini' (agenti primari) -> 'claude' (alterego) -> 'rest' (tutti a riposo)
 const state = {
   claudeActive: false,
   mode: null,
+  lastDiskMode,
   resumeAt: null,
   geminiResetAt: null,
   claudeResetAt: null,
@@ -120,14 +129,31 @@ function updateMode({ g5h, gWeekly = 1, c5h, cWeekly, resumeAt, geminiResetAt, c
   } else if (prev === 'rest') {
     if (claudeRecovered) next = 'claude';
   }
+  if (typeof cWeekly === 'number' && typeof gWeekly === 'number' && cWeekly < 0.02 && gWeekly < 0.02) {
+    next = 'rest';
+  }
   state.mode = next;
   state.claudeActive = next === 'claude';
   state.resumeAt = next === 'rest' ? (resumeAt || state.resumeAt) : null;
   state.geminiResetAt = geminiResetAt || state.geminiResetAt;
   state.claudeResetAt = claudeResetAt || state.claudeResetAt;
   // Emetti changed=true SOLO quando avviene un vero cambio di stato tra modelli/riposo (mai al primo avvio del server 'init')
-  const realChange = Boolean(prev && next !== prev);
-  return { mode: next, changed: realChange, prev: prev || 'init', isInit: !prev };
+  let realChange = false;
+  let effectivePrev = prev;
+  if (prev) {
+    realChange = (next !== prev);
+  } else {
+    if (state.lastDiskMode && next !== state.lastDiskMode) {
+      realChange = true;
+      effectivePrev = state.lastDiskMode;
+    } else if (next !== 'gemini') {
+      realChange = true;
+      effectivePrev = state.lastDiskMode || 'gemini';
+    } else {
+      effectivePrev = 'init';
+    }
+  }
+  return { mode: next, changed: realChange, prev: effectivePrev || 'init', isInit: !prev };
 }
 
 function getMode() { return state.mode || 'gemini'; }
@@ -238,5 +264,7 @@ module.exports = {
   setClaudeActive,
   isClaudeActive,
   resolveSubagent,
+  getLastDiskMode: () => state.lastDiskMode,
+  setLastDiskMode: (m) => { state.lastDiskMode = m; },
   allSessionsMap
 };
