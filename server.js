@@ -891,6 +891,10 @@ function sendOfficeInitProtocol(ws) {
     projectPath: routing.getTargetProject(),
     projectName: path.basename(routing.getTargetProject())
   }));
+  ws.send(JSON.stringify({
+    type: 'tunnelStatusChanged',
+    ...tunnelManager.getStatus()
+  }));
 
   if (lastQuotaData) {
     ws.send(JSON.stringify({
@@ -1694,7 +1698,7 @@ app.post('/api/war-room/stop', (req, res) => {
 });
 
 // Endpoints Live Preview Tunnel con Cloudflare (Idea #4)
-app.get('/api/tunnel/status', (req, res) => {
+app.get(['/api/tunnel', '/api/tunnel/status'], (req, res) => {
   res.json(tunnelManager.getStatus());
 });
 
