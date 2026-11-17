@@ -277,8 +277,54 @@ const ALLOWED_IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
 const ALLOWED_IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 const ALLOWED_AUDIO_EXTS = ['.ogg', '.mp3', '.wav', '.m4a'];
 const ALLOWED_AUDIO_MIMES = ['audio/ogg', 'audio/mpeg', 'audio/wav', 'audio/wave', 'audio/x-wav', 'audio/mp4', 'audio/x-m4a'];
+const ALLOWED_DOC_EXTS = ['.txt', '.tex', '.pdf', '.md', '.json', '.csv', '.log'];
+const ALLOWED_DOC_MIMES = [
+  'text/plain',
+  'application/pdf',
+  'application/json',
+  'text/json',
+  'text/markdown',
+  'text/x-markdown',
+  'text/csv',
+  'application/csv',
+  'text/x-csv',
+  'text/x-tex',
+  'application/x-tex',
+  'text/x-log',
+  'application/octet-stream'
+];
 const OUTBOUND_BLACKLIST_RE = /(\.env|\.config\.json|tasks_queue\.json|\.git|\.vbs|\.sh|\.bat|node_modules)/i;
 const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10 MB (Checklist Carlo)
+
+function validateInboundDocument(filename, size) {
+  if (!filename || typeof filename !== 'string') return { ok: false, error: 'Nome file mancante o non valido' };
+  const ext = path.extname(filename).toLowerCase();
+  if (!ALLOWED_DOC_EXTS.includes(ext)) {
+    return { ok: false, error: `Estensione file non consentita: ${ext} (ammessi: ${ALLOWED_DOC_EXTS.join(', ')})` };
+  }
+  if (size !== undefined && size !== null && size > MAX_UPLOAD_SIZE) {
+    return { ok: false, error: `Dimensione file supera il limite massimo consentito di 10MB (${(size / (1024 * 1024)).toFixed(1)}MB)` };
+  }
+  const safeName = path.basename(filename).replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  return { ok: true, ext, safeName };
+}
+
+function formatInboundDocumentPrompt(filePath, ext, userPrompt = '') {
+  const normalizedPath = `file:///${filePath.replace(/\\/g, '/')}`;
+  let docPreview = '';
+  if (ext !== '.pdf' && fs.existsSync(filePath)) {
+    try {
+      const fullText = fs.readFileSync(filePath, 'utf8');
+      const maxPreviewChars = 4000;
+      if (fullText.length > maxPreviewChars) {
+        docPreview = `\n\`\`\`${ext.replace('.', '')}\n${fullText.slice(0, maxPreviewChars)}\n... [troncato per anteprima, vedi file completo]\n\`\`\``;
+      } else {
+        docPreview = `\n\`\`\`${ext.replace('.', '')}\n${fullText}\n\`\`\``;
+      }
+    } catch {}
+  }
+  return `[Documento allegato (${ext}): ${normalizedPath}]${docPreview} ${userPrompt || 'Analizza ed elabora il documento allegato.'}`.trim();
+}
 
 const uploadRateLimits = new Map(); // userId -> [timestamps]
 
@@ -967,6 +1013,7 @@ function initDiscordBot(onBroadcast) {
         const isVoice = (message.flags && typeof message.flags.has === 'function' && message.flags.has(1 << 13)) || attachment.name?.includes('voice-message');
         const isAudio = isVoice || mime.startsWith('audio/') || ALLOWED_AUDIO_EXTS.includes(ext);
         const isImage = mime.startsWith('image/') || ALLOWED_IMAGE_EXTS.includes(ext);
+        const isDoc = ALLOWED_DOC_EXTS.includes(ext);
 
         // 1. GESTIONE VOCALE CON TRASCRIZIONE GEMINI FLASH
         if (isAudio) {
@@ -1034,6 +1081,36 @@ function initDiscordBot(onBroadcast) {
             await message.reply(`❌ **Errore download immagine:** ${imgErr.message}`).catch(() => {});
             return;
           }
+          break;
+        }
+
+        // 3. GESTIONE DOCUMENTI E FILE TESTUALI INBOUND (CHECKLIST CARLO & ALBERTO CEO)
+        else if (isDoc) {
+          const val = validateInboundDocument(attachment.name, attachment.size);
+          if (!val.ok) {
+            await message.reply(`⛔ **${val.error}**`).catch(() => {});
+            return;
+          }
+
+          const docsDir = path.join(__dirname, 'uploads', 'inbound_docs');
+          if (!fs.existsSync(docsDir)) fs.mkdirSync(docsDir, { recursive: true });
+          const savedDocPath = path.join(docsDir, `${Date.now()}_${val.safeName}`);
+
+          try {
+            await downloadAttachment(attachment.url, savedDocPath, MAX_UPLOAD_SIZE);
+            finalPrompt = formatInboundDocumentPrompt(savedDocPath, val.ext, finalPrompt);
+            const sizeKB = (attachment.size / 1024).toFixed(1);
+            await message.reply(`📄 **Documento ricevuto e archiviato:** \`${val.safeName}\` (${sizeKB} KB)`).catch(() => {});
+          } catch (docErr) {
+            console.warn('[Discord Bot] Errore salvataggio documento:', docErr.message);
+            try { if (fs.existsSync(savedDocPath)) fs.unlinkSync(savedDocPath); } catch {}
+            await message.reply(`❌ **Errore download documento:** ${docErr.message}`).catch(() => {});
+            return;
+          }
+          break;
+        } else {
+          await message.reply(`⛔ **Tipo di file non consentito:** \`${attachment.name || 'allegato'}\`. Formati accettati: immagini, note vocali o documenti (\`.txt\`, \`.tex\`, \`.pdf\`, \`.md\`, \`.json\`, \`.csv\`, \`.log\`).`).catch(() => {});
+          return;
         }
       }
     }
@@ -1556,5 +1633,9 @@ module.exports = {
   MAX_UPLOAD_SIZE,
   ALLOWED_IMAGE_EXTS,
   ALLOWED_AUDIO_EXTS,
+  ALLOWED_DOC_EXTS,
+  ALLOWED_DOC_MIMES,
+  validateInboundDocument,
+  formatInboundDocumentPrompt,
   getClient: () => client
 };
