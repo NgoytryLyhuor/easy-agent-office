@@ -1415,8 +1415,11 @@ wss.on('connection', (ws, req) => {
           toolId: requestId
         });
 
-        // 3. Notifica interattiva su Discord con bottoni
-        sendDiscordPermissionPrompt(requestId, targetId, (TEAM.find(a => a.id === targetId) || TEAM[0]).name, tool, command, description);
+        // 3. Notifica interattiva su Discord circoscritta (MAI per richieste simulate, di test o in auto-approvazione)
+        const isSimulation = Boolean(data.isSimulation || String(requestId).includes('sim') || String(requestId).includes('test') || String(description).toLowerCase().includes('simulaz'));
+        if (!isSimulation && Boolean(data.notifyDiscord)) {
+          sendDiscordPermissionPrompt(requestId, targetId, (TEAM.find(a => a.id === targetId) || TEAM[0]).name, tool, command, description, { isSimulation });
+        }
 
         broadcast({
           type: 'agentToolStart',
@@ -1631,11 +1634,14 @@ app.post('/api/permission/request', (req, res) => {
     permissionActive: true
   });
 
-  // Notifica interattiva su Discord con bottoni
-  try {
-    sendDiscordPermissionPrompt(requestId, targetId, targetName, cleanTool, cleanCommand, cleanDescription);
-  } catch (err) {
-    console.warn('[Discord Bot] Errore invio prompt autorizzazione:', err.message);
+  // Notifica interattiva su Discord circoscritta (MAI per richieste simulate, di test o in auto-approvazione)
+  const isSimulation = Boolean(req.body && (req.body.isSimulation || String(requestId).includes('sim') || String(requestId).includes('test') || String(cleanDescription).toLowerCase().includes('simulaz')));
+  if (!isSimulation && Boolean(req.body && req.body.notifyDiscord)) {
+    try {
+      sendDiscordPermissionPrompt(requestId, targetId, targetName, cleanTool, cleanCommand, cleanDescription, { isSimulation });
+    } catch (err) {
+      console.warn('[Discord Bot] Errore invio prompt autorizzazione:', err.message);
+    }
   }
 
   res.json({ success: true, requestId });

@@ -682,9 +682,36 @@ function sendFinalAgentResponse(agentId, text) {
   });
 }
 
-// Invia richiesta di autorizzazione interattiva con pulsanti su Discord (SOLO nel canale dell'agente o altrimenti solo in sala-operativa)
-function sendDiscordPermissionPrompt(requestId, agentId, agentName, tool, command, desc) {
-  if (!client || !client.isReady()) return;
+// Invia richiesta di autorizzazione interattiva con pulsanti su Discord
+function isPermissionPromptEnabled() {
+  return process.env.DISCORD_ENABLE_PERMISSION_PROMPTS === 'true';
+}
+
+function sendDiscordPermissionPrompt(requestId, agentId, agentName, tool, command, desc, options = {}) {
+  // 1. Circoscritto: disabilitato di default quando Antigravity opera in auto-approvazione / turbo
+  const isEnabled = isPermissionPromptEnabled() || Boolean(options && options.forceDiscordPrompt);
+  if (!isEnabled) {
+    return false;
+  }
+
+  // 2. Filtro anti-fantasma: blocca categoricamente simulazioni, test o richieste fittizie
+  const reqStr = String(requestId || '').toLowerCase();
+  const descStr = String(desc || '').toLowerCase();
+  const cmdStr = String(command || '').toLowerCase();
+  const isSimOrTest = Boolean(
+    (options && options.isSimulation) ||
+    reqStr.includes('sim') ||
+    reqStr.includes('test') ||
+    descStr.includes('simulaz') ||
+    descStr.includes('test autorizz') ||
+    cmdStr.includes('echo x')
+  );
+
+  if (isSimOrTest) {
+    return false;
+  }
+
+  if (!client || !client.isReady()) return false;
 
   const agentEntry = Object.values(SUBAGENT_CHANNELS).find(a => a.id === Number(agentId));
   const keyword = agentEntry ? agentEntry.channelKeyword : 'sala-operativa';
@@ -720,6 +747,8 @@ function sendDiscordPermissionPrompt(requestId, agentId, agentName, tool, comman
       });
     }
   });
+
+  return true;
 }
 
 // Aggiorna la dashboard live delle quote nel canale #📊-monitor-usage
@@ -832,6 +861,7 @@ module.exports = {
   initDiscordBot,
   sendFinalAgentResponse,
   sendDiscordPermissionPrompt,
+  isPermissionPromptEnabled,
   updateDiscordUsageMonitor,
   ensureControlPanel,
   renderControlPanelMessage,

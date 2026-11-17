@@ -1616,15 +1616,16 @@
         const time = new Date().toLocaleTimeString();
         const req = {
           agentId: selectedId,
-          requestId: `perm_${Date.now()}`,
+          requestId: `perm_sim_${Date.now()}`,
           tool: tool,
           command: command,
-          description: 'Richiesta di approvazione per esecuzione operazione sul repository.',
-          time: time
+          description: 'Richiesta di approvazione simulata per test UI/Canvas.',
+          time: time,
+          isSimulation: true
         };
         activePermissions[selectedId] = req;
         renderPermissionBox();
-        appendLog(selectedId, `[${time}] ⚠️ Richiesta autorizzazione in sospeso per: ${tool} -> "${command}"`, 'perm-warn');
+        appendLog(selectedId, `[${time}] ⚠️ Richiesta autorizzazione simulata per: ${tool} -> "${command}"`, 'perm-warn');
         agentStatuses[selectedId] = `⚠️ In attesa di approvazione (${tool})`;
         updateStatusDisplay(selectedId);
 
@@ -1635,7 +1636,8 @@
             requestId: req.requestId,
             tool: tool,
             command: command,
-            description: req.description
+            description: req.description,
+            isSimulation: true
           }));
         }
       }
@@ -3429,6 +3431,254 @@
       };
 
       fetchTunnelStatus();
+
+      // =========================================================================
+      // INNOVAZIONE #9: MEMORIA & SKILL GRAPH AZIENDALE (IDEA #5)
+      // =========================================================================
+      let companyMemory = {
+        rules: [],
+        preferences: [],
+        feedback: [],
+        facts: [],
+        customTools: [],
+        skillGraph: { nodes: [], edges: [] }
+      };
+      let activeMemoryTab = 'prefs';
+
+      async function fetchMemoryData() {
+        try {
+          const res = await fetch('/api/memory');
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.memory) {
+              companyMemory = Object.assign(companyMemory, data.memory);
+              if (data.skillGraph) companyMemory.skillGraph = data.skillGraph;
+              renderMemoryModal();
+            }
+          }
+        } catch (err) {
+          console.warn('[Memory] Errore fetch memoria:', err.message);
+        }
+      }
+
+      function switchMemoryTab(tabId) {
+        activeMemoryTab = tabId;
+        const tabs = ['prefs', 'rules', 'skills', 'learn'];
+        tabs.forEach(t => {
+          const btn = document.getElementById(`tab-btn-memory-${t}`);
+          const panel = document.getElementById(`memory-tab-${t}`);
+          const isActive = t === tabId;
+          if (btn) {
+            btn.style.background = isActive ? '#21262d' : 'transparent';
+            btn.style.color = isActive ? '#bc8cff' : '#8b949e';
+            btn.style.borderColor = isActive ? '#a371f7' : 'transparent';
+            btn.style.fontWeight = isActive ? '700' : '600';
+          }
+          if (panel) {
+            panel.style.display = isActive ? 'block' : 'none';
+          }
+        });
+        renderMemoryModal();
+      }
+
+      function renderMemoryModal() {
+        const t = I18N[appLang] || I18N.it;
+        const prefs = companyMemory.preferences || [];
+        const rules = companyMemory.rules || [];
+        const graph = companyMemory.skillGraph || { nodes: [], edges: [] };
+
+        // Aggiorna conteggi nei tab
+        const cPrefs = document.getElementById('count-memory-prefs');
+        if (cPrefs) cPrefs.textContent = String(prefs.length);
+        const cRules = document.getElementById('count-memory-rules');
+        if (cRules) cRules.textContent = String(rules.length);
+
+        // 1. Render Preferenze Utente
+        const prefsListEl = document.getElementById('memory-prefs-list');
+        if (prefsListEl) {
+          if (prefs.length === 0) {
+            prefsListEl.innerHTML = '<div style="color:#8b949e; font-size:0.78rem; font-style:italic; padding:16px; text-align:center;">Nessuna preferenza memorizzata al momento.</div>';
+          } else {
+            prefsListEl.innerHTML = prefs.map(p => {
+              const dateStr = p.timestamp ? new Date(p.timestamp).toLocaleDateString() : '';
+              return `
+                <div style="background:#161b22; border:1px solid #30363d; border-radius:8px; padding:10px 14px; display:flex; flex-direction:column; gap:6px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <span style="background:#8957e526; color:#d2a8ff; border:1px solid #8957e566; border-radius:12px; padding:2px 8px; font-size:0.68rem; font-weight:700;">⭐ ${escapeHtml(p.key || p.category || 'Preference')}</span>
+                      <span style="font-size:0.72rem; color:#8b949e;">Origine: <strong style="color:#c9d1d9;">${escapeHtml(p.source || 'Alberto (CEO)')}</strong></span>
+                    </div>
+                    ${dateStr ? `<span style="font-size:0.68rem; color:#6e7681;">${escapeHtml(dateStr)}</span>` : ''}
+                  </div>
+                  <div style="font-size:0.82rem; color:#f0f6fc; line-height:1.45; font-weight:500;">
+                    ${escapeHtml(p.value || p.text || '')}
+                  </div>
+                </div>
+              `;
+            }).join('');
+          }
+        }
+
+        // 2. Render Regole Operative Apprese
+        const rulesListEl = document.getElementById('memory-rules-list');
+        if (rulesListEl) {
+          if (rules.length === 0) {
+            rulesListEl.innerHTML = '<div style="color:#8b949e; font-size:0.78rem; font-style:italic; padding:16px; text-align:center;">Nessuna regola operativa attiva.</div>';
+          } else {
+            rulesListEl.innerHTML = rules.map(r => {
+              const dateStr = r.timestamp ? new Date(r.timestamp).toLocaleDateString() : '';
+              return `
+                <div style="background:#161b22; border:1px solid #30363d; border-left:3px solid #bc8cff; border-radius:8px; padding:10px 14px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                  <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                      <span style="background:#23863626; color:#3fb950; border:1px solid #23863666; border-radius:4px; padding:2px 6px; font-size:0.68rem; font-weight:700;">REGOLA: ${escapeHtml(r.key || 'standard')}</span>
+                      <span style="background:#21262d; color:#8b949e; border-radius:10px; padding:1px 6px; font-size:0.66rem; font-weight:600;">Fonte: ${escapeHtml(r.source || 'AziendaAI')}</span>
+                      ${dateStr ? `<span style="font-size:0.66rem; color:#6e7681;">${escapeHtml(dateStr)}</span>` : ''}
+                    </div>
+                    <div style="font-size:0.8rem; color:#e6edf3; line-height:1.4; margin-top:2px;">
+                      ${escapeHtml(r.value || r.action || '')}
+                    </div>
+                  </div>
+                  <span style="font-size:1.1rem; color:#bc8cff;">🧬</span>
+                </div>
+              `;
+            }).join('');
+          }
+        }
+
+        // 3. Render Grafo Skill & Tool
+        const skillsContainer = document.getElementById('memory-skills-container');
+        if (skillsContainer) {
+          const agentNodes = (graph.nodes || []).filter(n => n.type === 'agent');
+          if (agentNodes.length === 0) {
+            skillsContainer.innerHTML = '<div style="color:#8b949e; font-size:0.78rem; font-style:italic; padding:16px;">Caricamento grafo skill in corso...</div>';
+          } else {
+            skillsContainer.innerHTML = agentNodes.map(agent => {
+              const edges = (graph.edges || []).filter(e => e.from === agent.id);
+              const skills = edges.map(e => {
+                const targetNode = (graph.nodes || []).find(n => n.id === e.to);
+                const label = targetNode ? targetNode.label : e.to;
+                const rel = e.relation || 'expert';
+                const lvl = e.level ? `Lv. ${e.level}` : '';
+                return { label, rel, lvl, color: targetNode ? targetNode.color : '#bc8cff' };
+              });
+
+              const avatarMap = { 'alberto-ceo': '👔', 'luigi-backend': '⚙️', 'gabri-frontend': '🎨', 'carlo-qa': '🛡️' };
+              const avatar = avatarMap[agent.key] || '🤖';
+              const agentColor = agent.color || '#58a6ff';
+
+              return `
+                <div style="background:#161b22; border:1px solid #30363d; border-top:3px solid ${agentColor}; border-radius:8px; padding:14px; display:flex; flex-direction:column; gap:10px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #21262d; padding-bottom:8px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <span style="font-size:1.4rem;">${avatar}</span>
+                      <div>
+                        <div style="font-size:0.86rem; font-weight:700; color:#f0f6fc;">${escapeHtml(agent.label)}</div>
+                        <div style="font-size:0.7rem; color:${agentColor}; font-weight:600;">${escapeHtml(agent.id)}</div>
+                      </div>
+                    </div>
+                    <span style="background:#21262d; color:#8b949e; border:1px solid #30363d; padding:2px 8px; border-radius:12px; font-size:0.68rem; font-weight:700;">${skills.length} Nodi Connessi</span>
+                  </div>
+
+                  <div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.68rem; color:#8b949e; margin-bottom:3px;">
+                      <span>Competenze & Tool nel Grafo:</span>
+                      <strong style="color:${agentColor};">${skills.length} attivi</strong>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:5px;">
+                      ${skills.map(sk => `
+                        <div style="background:#0d1117; border:1px solid #30363d; border-radius:5px; padding:3px 7px; display:flex; align-items:center; gap:5px; font-size:0.7rem;">
+                          <span style="color:#e6edf3; font-weight:500;">${escapeHtml(sk.label)}</span>
+                          <span style="background:${agentColor}22; color:${agentColor}; font-size:0.62rem; padding:1px 4px; border-radius:3px; font-weight:700;">${escapeHtml(sk.rel)}</span>
+                          ${sk.lvl ? `<span style="color:#8b949e; font-size:0.62rem;">${escapeHtml(sk.lvl)}</span>` : ''}
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('');
+          }
+        }
+      }
+
+      window.openMemoryModal = function() {
+        const el = document.getElementById('memory-modal-overlay');
+        if (el) {
+          el.style.display = 'flex';
+          switchMemoryTab(activeMemoryTab);
+          fetchMemoryData();
+        }
+      };
+
+      window.closeMemoryModal = function() {
+        const el = document.getElementById('memory-modal-overlay');
+        if (el) el.style.display = 'none';
+      };
+
+      window.submitMemoryLearn = async function() {
+        const catEl = document.getElementById('memory-input-category');
+        const txtEl = document.getElementById('memory-input-text');
+        const srcEl = document.getElementById('memory-input-source');
+        const statusEl = document.getElementById('memory-form-status');
+        const btn = document.getElementById('btn-memory-submit');
+
+        const value = txtEl ? txtEl.value.trim() : '';
+        if (!value) {
+          if (statusEl) {
+            statusEl.style.color = '#da3633';
+            statusEl.textContent = '⚠️ Inserisci il contenuto della regola o preferenza.';
+          }
+          return;
+        }
+
+        const category = catEl ? catEl.value : 'rules';
+        const source = srcEl ? srcEl.value : 'Alberto (CEO)';
+
+        if (btn) btn.disabled = true;
+        if (statusEl) {
+          statusEl.style.color = '#58a6ff';
+          statusEl.textContent = '⏳ Registrazione in corso...';
+        }
+
+        try {
+          const res = await fetch('/api/memory/learn', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ category, value, text: value, source })
+          });
+          const data = await res.json();
+          if (data && data.ok) {
+            if (data.memory) companyMemory = Object.assign(companyMemory, data.memory);
+            if (data.skillGraph) companyMemory.skillGraph = data.skillGraph;
+            if (txtEl) txtEl.value = '';
+            playRetroSound('complete');
+            if (statusEl) {
+              statusEl.style.color = '#3fb950';
+              statusEl.textContent = '✅ Nuova memoria registrata nel Brain aziendale!';
+            }
+            appendLog(10, `[${new Date().toLocaleTimeString()}] 🧬 Memoria Appresa: "${category}" -> "${value.slice(0, 60)}..."`, 'done');
+            renderMemoryModal();
+            setTimeout(() => {
+              switchMemoryTab(category === 'rules' ? 'rules' : 'prefs');
+            }, 1200);
+          } else {
+            if (statusEl) {
+              statusEl.style.color = '#da3633';
+              statusEl.textContent = '❌ Errore: ' + (data ? data.error : 'Salvataggio non riuscito');
+            }
+          }
+        } catch (err) {
+          if (statusEl) {
+            statusEl.style.color = '#da3633';
+            statusEl.textContent = '❌ Errore di rete: ' + err.message;
+          }
+        } finally {
+          if (btn) btn.disabled = false;
+        }
+      };
+
+      fetchMemoryData();
     </script>
 
     <!-- JS ENGINE ORIGINALE PIXEL AGENTS -->
