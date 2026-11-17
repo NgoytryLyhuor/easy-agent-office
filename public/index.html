@@ -13,6 +13,7 @@
     <link rel="apple-touch-icon" href="./icons/icon-256.png" />
     <link rel="icon" type="image/png" href="./icons/icon-256.png?v=2" />
     <link rel="stylesheet" crossorigin href="./assets/index-B4KUBY28.css" />
+    <script src="./vendor/3d-force-graph.min.js"></script>
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body {
@@ -689,6 +690,7 @@
         <button id="topbar-tunnel-btn" onclick="openTunnelModal()" title="Mobile Preview Tunnel & QR Code (Idea #4)" style="background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">🌐 <span id="label-topbar-tunnel">Mobile Preview:</span> <span id="topbar-tunnel-badge" style="background:#30363d; color:#8b949e; font-size:0.68rem; padding:1px 6px; border-radius:10px; font-weight:700;">Offline</span></button>
         <button id="kanban-toggle-btn" onclick="openKanbanModal()" style="background:#21262d; color:#58a6ff; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px;">📋 <span id="label-kanban-btn">Lavagna Task</span> <span id="kanban-count-badge" style="background:#1f6feb; color:#fff; border-radius:99px; padding:1px 6px; font-size:0.68rem;">0</span></button>
         <button id="memory-graph-btn" onclick="openMemoryModal()" title="Memoria & Skill Graph Aziendale (Idea #5)" style="background:#21262d; color:#bc8cff; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px;">🧬 <span id="label-memory-btn">Memoria & Skill</span></button>
+        <button id="living-brain-btn" onclick="openLivingBrainModal()" title="The Living Brain 3D — Neurale AziendaAI" style="background:linear-gradient(135deg, #1f2937, #111827); color:#d2a8ff; border:1px solid #a371f7; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px; box-shadow:0 0 10px rgba(163,113,247,0.25);">🧠 <span id="label-living-brain-btn">Living Brain 3D</span></button>
         <button id="sound-toggle-btn" onclick="toggleRetroSound()" title="Effetti Sonori 8-Bit / 8-Bit Sound Effects" style="background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:5px 9px; font-size:0.78rem; font-weight:700; cursor:pointer;">🔊</button>
         <button id="lang-toggle-btn" onclick="toggleAppLang()" style="background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer;">🇮🇹 IT</button>
       </div>
@@ -817,6 +819,7 @@
           <button class="quick-chip" id="chip-git-push" style="border-color:#238636; color:#3fb950;" onclick="triggerGitCommitPush()">🚀 Git Commit & Push</button>
           <button class="quick-chip" id="chip-war-room" style="border-color:#da3633; color:#f85149;" onclick="triggerWarRoomAlert()">🚨 War Room</button>
           <button class="quick-chip" id="chip-memory" style="border-color:#a371f7; color:#d2a8ff;" onclick="openMemoryModal()">🧬 Memoria & Skill</button>
+          <button class="quick-chip" id="chip-living-brain" style="border-color:#bc8cff; color:#d2a8ff;" onclick="openLivingBrainModal()">🧠 Living Brain 3D</button>
         </div>
 
         <div class="command-bar">
@@ -1121,6 +1124,7 @@
           <button class="memory-tab-btn" id="tab-btn-memory-prefs" onclick="switchMemoryTab('prefs')" style="background:#21262d; color:#58a6ff; border:1px solid #388bfd; border-radius:6px; padding:5px 12px; font-size:0.75rem; font-weight:700; cursor:pointer; white-space:nowrap;">🌟 Preferenze Utente (<span id="count-memory-prefs">0</span>)</button>
           <button class="memory-tab-btn" id="tab-btn-memory-rules" onclick="switchMemoryTab('rules')" style="background:transparent; color:#8b949e; border:1px solid transparent; border-radius:6px; padding:5px 12px; font-size:0.75rem; font-weight:600; cursor:pointer; white-space:nowrap;">📜 Regole Operative (<span id="count-memory-rules">0</span>)</button>
           <button class="memory-tab-btn" id="tab-btn-memory-skills" onclick="switchMemoryTab('skills')" style="background:transparent; color:#8b949e; border:1px solid transparent; border-radius:6px; padding:5px 12px; font-size:0.75rem; font-weight:600; cursor:pointer; white-space:nowrap;">🕸️ Grafo Skill & Tool</button>
+          <button class="memory-tab-btn" id="tab-btn-memory-brain" onclick="switchMemoryTab('brain')" style="background:transparent; color:#8b949e; border:1px solid transparent; border-radius:6px; padding:5px 12px; font-size:0.75rem; font-weight:600; cursor:pointer; white-space:nowrap;">🧠 The Living Brain 3D</button>
           <button class="memory-tab-btn" id="tab-btn-memory-learn" onclick="switchMemoryTab('learn')" style="background:transparent; color:#8b949e; border:1px solid transparent; border-radius:6px; padding:5px 12px; font-size:0.75rem; font-weight:600; cursor:pointer; white-space:nowrap;">➕ Apprendi Regola</button>
         </div>
 
@@ -1187,12 +1191,202 @@
               </div>
             </div>
           </div>
+
+          <!-- 5. TAB LIVING BRAIN 3D & DAILY DIGEST -->
+          <div id="memory-tab-brain" class="memory-tab-content" style="display: none;">
+            <div style="background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 1.6rem;">🧠</span>
+                  <div>
+                    <h3 style="font-size: 0.95rem; color: #f0f6fc; margin: 0; font-weight: 700;">The Living Brain 3D — Neurale AziendaAI</h3>
+                    <div style="font-size: 0.72rem; color: #8b949e;">Visualizzazione 3D WebGL della memoria condivisa, dei 4 lobi agenti e delle sinapsi pulsanti</div>
+                  </div>
+                </div>
+                <button onclick="openLivingBrainModal()" style="background: linear-gradient(135deg, #8957e5, #1f6feb); color: #fff; border: none; border-radius: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 0 12px rgba(137,87,229,0.4);">
+                  🚀 Espandi HUD Neurale 3D
+                </button>
+              </div>
+
+              <!-- DAILY DIGEST CONTROL PANEL -->
+              <div style="background: #0d1117; border: 1px solid #30363d; border-left: 3px solid #bc8cff; border-radius: 8px; padding: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.84rem; font-weight: 700; color: #f0f6fc;">
+                      <input type="checkbox" id="toggle-daily-digest" onchange="toggleDailyDigest(this.checked)" style="width: 17px; height: 17px; accent-color: #bc8cff; cursor: pointer;" />
+                      <span id="label-daily-digest">🌙 Daily Digest Notturno</span>
+                    </label>
+                    <span id="daily-digest-badge" style="background: #23863622; color: #3fb950; border: 1px solid #23863666; border-radius: 10px; padding: 1px 7px; font-size: 0.68rem; font-weight: 700;">Zero Spreco Quote</span>
+                  </div>
+                  <div id="daily-digest-status-text" style="font-size: 0.73rem; color: #8b949e;">
+                    Report automatico programmato alle ore <code id="daily-digest-time-display" style="color: #58a6ff;">02:00</code> per preservare quote AI ed evitare consumi inutili.
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button id="btn-digest-run-now" onclick="triggerDigestOnDemand()" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; padding: 6px 12px; font-size: 0.74rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                    ⚡ Genera Ora
+                  </button>
+                </div>
+              </div>
+
+              <!-- TELEMETRIA SINTETICA BRAIN -->
+              <div id="memory-brain-telemetry-box" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 1.4rem;">👔</span>
+                  <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: #58a6ff;">Alberto (CEO)</div>
+                    <div style="font-size: 0.68rem; color: #8b949e;">Lobo Orchestrazione</div>
+                  </div>
+                </div>
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 1.4rem;">⚙️</span>
+                  <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: #2ea043;">Luigi (Backend)</div>
+                    <div style="font-size: 0.68rem; color: #8b949e;">Lobo Server & Net</div>
+                  </div>
+                </div>
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 1.4rem;">🎨</span>
+                  <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: #bc8cff;">Gabri (Frontend)</div>
+                    <div style="font-size: 0.68rem; color: #8b949e;">Lobo UI & Shaders</div>
+                  </div>
+                </div>
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 1.4rem;">🛡️</span>
+                  <div>
+                    <div style="font-size: 0.78rem; font-weight: 700; color: #d29922;">Carlo (QA)</div>
+                    <div style="font-size: 0.68rem; color: #8b949e;">Lobo Audit & Hardening</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- MODAL FOOTER -->
         <div style="padding: 12px 20px; background: #161b22; border-top: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center;">
           <span id="memory-modal-footer-note" style="font-size: 0.72rem; color: #8b949e;">💡 La memoria aziendale persiste tra i riavvii e guida le decisioni autonome degli agenti.</span>
           <button id="modal-memory-close-btn" onclick="closeMemoryModal()" style="background:#21262d; color:#c9d1d9; border:1px solid #30363d; border-radius:6px; padding:6px 14px; font-size:0.78rem; cursor:pointer;">Chiudi</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODALE THE LIVING BRAIN 3D (CYBERPUNK NEURAL VIEWER) -->
+    <div id="living-brain-modal-overlay" onclick="if(event.target===this) closeLivingBrainModal()" style="
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 10006;
+      background: rgba(3, 7, 18, 0.94);
+      backdrop-filter: blur(8px);
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    ">
+      <div style="
+        width: 100%;
+        max-width: 1280px;
+        height: 92vh;
+        background: #080d14;
+        border: 1px solid #388bfd55;
+        border-radius: 14px;
+        box-shadow: 0 0 50px rgba(56, 139, 253, 0.25), 0 25px 60px rgba(0,0,0,0.9);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+      ">
+        <!-- HUD TOPBAR -->
+        <div style="padding: 12px 20px; background: #0f172a; border-bottom: 1px solid #1e293b; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; z-index: 10;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 1.4rem; text-shadow: 0 0 10px #bc8cff;">🧠</span>
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <h2 id="living-brain-title" style="font-size: 1rem; color: #f0f6fc; margin: 0; font-weight: 800; letter-spacing: 0.5px;">The Living Brain 3D — Neurale AziendaAI</h2>
+                <span id="brain-webgl-badge" style="background:#23863622; color:#3fb950; border:1px solid #23863666; border-radius:12px; padding:2px 8px; font-size:0.68rem; font-weight:700;">🟢 WebGL 3D ACCELERATO</span>
+              </div>
+              <div id="living-brain-subtitle" style="font-size: 0.72rem; color: #8b949e; margin-top: 2px;">Grafo Neurale Condiviso • 4 Lobi Agenti • Link Sinaptici Pulsanti</div>
+            </div>
+          </div>
+
+          <!-- TELEMETRIA & CONTROLLI HUD -->
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 6px; background: #161e2e; border: 1px solid #30363d; border-radius: 8px; padding: 4px 10px;">
+              <span style="font-size: 0.72rem; color: #8b949e;">Nodi:</span>
+              <strong id="brain-nodes-count" style="font-size: 0.76rem; color: #58a6ff;">0</strong>
+              <span style="color:#484f58; font-size:0.7rem;">/300</span>
+              <span style="color:#30363d;">|</span>
+              <span style="font-size: 0.72rem; color: #8b949e;">Sinapsi:</span>
+              <strong id="brain-links-count" style="font-size: 0.76rem; color: #bc8cff;">0</strong>
+            </div>
+
+            <input type="text" id="brain-search-input" oninput="filterBrainNodes(this.value)" placeholder="🔍 Cerca neurone..." style="background: #0b0f19; border: 1px solid #30363d; border-radius: 6px; padding: 5px 10px; color: #f0f6fc; font-size: 0.75rem; width: 140px;" />
+
+            <button id="btn-brain-auto-orbit" onclick="toggleBrainAutoOrbit()" style="background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:600; cursor:pointer;">🔄 Auto-Orbit</button>
+            <button id="btn-brain-reset-cam" onclick="resetBrainCamera()" style="background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:600; cursor:pointer;">🎯 Reset Camera</button>
+            <button id="modal-brain-close-btn" onclick="closeLivingBrainModal()" style="background:#da3633; color:#fff; border:none; border-radius:6px; padding:5px 12px; font-size:0.8rem; font-weight:700; cursor:pointer;">✕ Chiudi</button>
+          </div>
+        </div>
+
+        <!-- 3D VIEWPORT CONTAINER -->
+        <div style="flex: 1; position: relative; width: 100%; height: 100%; overflow: hidden; background: #030712;">
+          <div id="living-brain-3d-viewport" style="width: 100%; height: 100%; position: absolute; inset: 0;"></div>
+
+          <!-- FLOATING NODE INSPECTOR CARD -->
+          <div id="living-brain-inspector" style="
+            position: absolute;
+            right: 20px;
+            bottom: 20px;
+            width: 320px;
+            max-width: calc(100% - 40px);
+            background: rgba(15, 23, 42, 0.94);
+            border: 1px solid #388bfd66;
+            border-radius: 10px;
+            padding: 14px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.85);
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 20;
+          ">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="inspector-node-avatar" style="font-size: 1.3rem;">🔹</span>
+                <div>
+                  <div id="inspector-node-title" style="font-size: 0.86rem; font-weight: 700; color: #f0f6fc;">Nome Nodo</div>
+                  <div id="inspector-node-category" style="font-size: 0.68rem; color: #58a6ff; font-weight: 600;">Categoria</div>
+                </div>
+              </div>
+              <button onclick="document.getElementById('living-brain-inspector').style.display='none'" style="background:transparent; border:none; color:#8b949e; cursor:pointer; font-size:0.9rem; font-weight:700;">✕</button>
+            </div>
+            <div id="inspector-node-content" style="font-size: 0.78rem; color: #e6edf3; line-height: 1.45; max-height: 140px; overflow-y: auto;">
+              Dettagli del neurone...
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.68rem; color: #8b949e; border-top: 1px solid #21262d; padding-top: 6px;">
+              <span id="inspector-node-meta">Sinapsi collegate: 0</span>
+              <button onclick="focusSelectedBrainNode()" style="background:#21262d; color:#58a6ff; border:1px solid #388bfd44; border-radius:4px; padding:3px 8px; font-size:0.68rem; cursor:pointer;">🎯 Centra Camera</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- HUD FOOTER BAR -->
+        <div style="padding: 10px 20px; background: #0f172a; border-top: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; z-index: 10;">
+          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <button class="brain-filter-btn" onclick="filterBrainCategory('all')" style="background:#21262d; color:#58a6ff; border:1px solid #388bfd; border-radius:6px; padding:3px 9px; font-size:0.72rem; font-weight:600; cursor:pointer;">Tutti</button>
+            <button class="brain-filter-btn" onclick="filterBrainCategory('agent')" style="background:transparent; color:#8b949e; border:1px solid #30363d; border-radius:6px; padding:3px 9px; font-size:0.72rem; font-weight:600; cursor:pointer;">👔 Lobi Agenti (4)</button>
+            <button class="brain-filter-btn" onclick="filterBrainCategory('skill')" style="background:transparent; color:#8b949e; border:1px solid #30363d; border-radius:6px; padding:3px 9px; font-size:0.72rem; font-weight:600; cursor:pointer;">⚡ Competenze & Tool</button>
+            <button class="brain-filter-btn" onclick="filterBrainCategory('rule')" style="background:transparent; color:#8b949e; border:1px solid #30363d; border-radius:6px; padding:3px 9px; font-size:0.72rem; font-weight:600; cursor:pointer;">📜 Regole Operative</button>
+            <button class="brain-filter-btn" onclick="filterBrainCategory('preference')" style="background:transparent; color:#8b949e; border:1px solid #30363d; border-radius:6px; padding:3px 9px; font-size:0.72rem; font-weight:600; cursor:pointer;">⭐ Preferenze</button>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.74rem; color:#f0f6fc;">
+              <input type="checkbox" id="hud-toggle-daily-digest" onchange="toggleDailyDigest(this.checked)" style="accent-color:#bc8cff; cursor:pointer;" />
+              <span>🌙 Daily Digest Notturno</span>
+            </label>
+          </div>
         </div>
       </div>
     </div>
@@ -1270,6 +1464,16 @@
           memoryLearnTab: '➕ Apprendi Regola',
           memorySubmitBtn: '🧬 Apprendi & Registra',
           memoryCloseBtn: 'Chiudi',
+          chipLivingBrain: '🧠 Living Brain 3D',
+          livingBrainBtn: 'Living Brain 3D',
+          livingBrainTitle: 'The Living Brain 3D — Neurale AziendaAI',
+          livingBrainSubtitle: 'Grafo Neurale Condiviso • 4 Lobi Agenti • Link Sinaptici Pulsanti',
+          tabLivingBrain: '🧠 The Living Brain 3D',
+          dailyDigestLabel: '🌙 Daily Digest Notturno',
+          dailyDigestDesc: 'Report automatico programmato alle ore 02:00 per preservare quote AI ed evitare consumi inutili.',
+          brainAutoOrbit: '🔄 Auto-Orbit',
+          brainResetCam: '🎯 Reset Camera',
+          brainClose: '✕ Chiudi',
           inputPh: "Assegna un'istruzione a questo agente...",
           sendBtn: 'Invia Task',
           walkLog: (to, msg) => `🚶‍♂️ Cammina verso ${to} per assegnare: "${msg}"`,
@@ -1343,6 +1547,16 @@
           memoryLearnTab: '➕ Learn Rule',
           memorySubmitBtn: '🧬 Learn & Register',
           memoryCloseBtn: 'Close',
+          chipLivingBrain: '🧠 Living Brain 3D',
+          livingBrainBtn: 'Living Brain 3D',
+          livingBrainTitle: 'The Living Brain 3D — AziendaAI Neural',
+          livingBrainSubtitle: 'Shared Neural Graph • 4 Agent Lobes • Pulsing Synaptic Links',
+          tabLivingBrain: '🧠 The Living Brain 3D',
+          dailyDigestLabel: '🌙 Nightly Daily Digest',
+          dailyDigestDesc: 'Automated executive report scheduled at 02:00 to preserve AI quotas and avoid waste.',
+          brainAutoOrbit: '🔄 Auto-Orbit',
+          brainResetCam: '🎯 Reset Camera',
+          brainClose: '✕ Close',
           inputPh: 'Assign a task or instruction to this agent...',
           sendBtn: 'Send Task',
           walkLog: (to, msg) => `🚶‍♂️ Walking to ${to} to deliver: "${msg}"`,
@@ -1403,6 +1617,16 @@
         const memModDesc = document.getElementById('memory-modal-desc'); if (memModDesc) memModDesc.textContent = t.memoryModalDesc;
         const memSubmitBtn = document.getElementById('btn-memory-submit'); if (memSubmitBtn) memSubmitBtn.textContent = t.memorySubmitBtn;
         const memCloseBtn = document.getElementById('modal-memory-close-btn'); if (memCloseBtn) memCloseBtn.textContent = t.memoryCloseBtn;
+        const lBrainBtn = document.getElementById('label-living-brain-btn'); if (lBrainBtn) lBrainBtn.textContent = t.livingBrainBtn;
+        const cBrain = document.getElementById('chip-living-brain'); if (cBrain) cBrain.textContent = t.chipLivingBrain;
+        const bBrainTitle = document.getElementById('living-brain-title'); if (bBrainTitle) bBrainTitle.textContent = t.livingBrainTitle;
+        const bBrainSub = document.getElementById('living-brain-subtitle'); if (bBrainSub) bBrainSub.textContent = t.livingBrainSubtitle;
+        const tabBrain = document.getElementById('tab-btn-memory-brain'); if (tabBrain) tabBrain.textContent = t.tabLivingBrain;
+        const lDigest = document.getElementById('label-daily-digest'); if (lDigest) lDigest.textContent = t.dailyDigestLabel;
+        const lDigestDesc = document.getElementById('daily-digest-status-text'); if (lDigestDesc) lDigestDesc.textContent = t.dailyDigestDesc;
+        const bOrbit = document.getElementById('btn-brain-auto-orbit'); if (bOrbit) bOrbit.textContent = t.brainAutoOrbit;
+        const bCam = document.getElementById('btn-brain-reset-cam'); if (bCam) bCam.textContent = t.brainResetCam;
+        const bClose = document.getElementById('modal-brain-close-btn'); if (bClose) bClose.textContent = t.brainClose;
         const inp = document.getElementById('task-input'); if (inp) inp.placeholder = t.inputPh;
         const sBtn = document.getElementById('send-task-btn'); if (sBtn) sBtn.textContent = t.sendBtn;
         if (typeof updateTunnelUI === 'function') updateTunnelUI(currentTunnelState);
@@ -3467,7 +3691,7 @@
 
       function switchMemoryTab(tabId) {
         activeMemoryTab = tabId;
-        const tabs = ['prefs', 'rules', 'skills', 'learn'];
+        const tabs = ['prefs', 'rules', 'skills', 'brain', 'learn'];
         tabs.forEach(t => {
           const btn = document.getElementById(`tab-btn-memory-${t}`);
           const panel = document.getElementById(`memory-tab-${t}`);
@@ -3482,6 +3706,9 @@
             panel.style.display = isActive ? 'block' : 'none';
           }
         });
+        if (tabId === 'brain') {
+          fetchDigestStatus();
+        }
         renderMemoryModal();
       }
 
@@ -3682,7 +3909,637 @@
         }
       };
 
-      fetchMemoryData();
+      // =========================================================================
+      // INNOVAZIONE #10: THE LIVING BRAIN 3D & DAILY DIGEST NOTTURNO
+      // =========================================================================
+      const MAX_BRAIN_NODES = 300;
+      let livingBrainGraphInstance = null;
+      let livingBrainData = { nodes: [], links: [] };
+      let brainActiveFilter = 'all';
+      let isBrainAutoOrbiting = true;
+      let brainOrbitAngle = 0;
+      let brainOrbitInterval = null;
+      let fallback2dAnimId = null;
+      let selectedBrainNode = null;
+
+      function isWebGLAvailable() {
+        try {
+          const canvas = document.createElement('canvas');
+          return Boolean(window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+        } catch (e) {
+          return false;
+        }
+      }
+
+      async function fetchLivingBrainData() {
+        try {
+          const res = await fetch('/api/memory/neural-graph');
+          if (res.ok) {
+            const data = await res.json();
+            if (data && Array.isArray(data.nodes) && Array.isArray(data.synapses)) {
+              let nodes = data.nodes.map(n => {
+                const iconMap = {
+                  agent: n.id === 'agent:10' ? '👔' : n.id === 'agent:6' ? '⚙️' : n.id === 'agent:7' ? '🎨' : '🛡️',
+                  skill: '⚡',
+                  rule: '📜',
+                  preference: '⭐',
+                  fact: '💡',
+                  'custom-tool': '🛠️'
+                };
+                return {
+                  id: n.id,
+                  label: n.label || n.id,
+                  type: n.type || 'satellite',
+                  role: n.role || n.category || '',
+                  category: n.category || n.type || 'Memoria',
+                  color: n.color || (n.type === 'agent' ? '#58a6ff' : '#bc8cff'),
+                  val: n.size ? Math.max(n.size * 0.9, 4) : (n.type === 'agent' ? 24 : 8),
+                  icon: iconMap[n.type] || '🔹',
+                  hemisphere: n.hemisphere || 'core',
+                  description: n.description || n.value || n.text || n.label || '',
+                  activity: n.activity || 0.8,
+                  raw: n
+                };
+              });
+
+              // Cap a 300 nodi (Checklist Carlo)
+              if (nodes.length > MAX_BRAIN_NODES) {
+                const critical = nodes.filter(n => n.type === 'agent' || n.type === 'skill');
+                const others = nodes.filter(n => n.type !== 'agent' && n.type !== 'skill');
+                nodes = critical.concat(others.slice(0, MAX_BRAIN_NODES - critical.length));
+              }
+
+              const validNodeIds = new Set(nodes.map(n => n.id));
+              const links = data.synapses
+                .filter(s => validNodeIds.has(s.source) && validNodeIds.has(s.target))
+                .map(s => ({
+                  source: s.source,
+                  target: s.target,
+                  color: s.color || '#388bfd55',
+                  width: s.type === 'structural' ? 2.0 : 1.2,
+                  particles: s.pulsing ? 3 : 1,
+                  speed: s.pulseSpeed ? s.pulseSpeed * 0.004 : 0.006,
+                  particleColor: s.color || '#79c0ff',
+                  synapticStrength: s.synapticStrength || 0.8
+                }));
+
+              livingBrainData = { nodes, links };
+              return livingBrainData;
+            }
+          }
+        } catch (err) {
+          console.warn('[LivingBrain] Errore fetch neural-graph:', err.message);
+        }
+
+        // Fallback locale da companyMemory
+        return compileBrainDataFromMemory();
+      }
+
+      function compileBrainDataFromMemory() {
+        const nodes = [
+          { id: 'agent:10', label: 'Alberto (CEO)', type: 'agent', role: 'Leadership & Orchestrazione', color: '#58a6ff', val: 26, icon: '👔', hemisphere: 'right' },
+          { id: 'agent:6', label: 'Luigi (Backend)', type: 'agent', role: 'Server & Networking', color: '#2ea043', val: 22, icon: '⚙️', hemisphere: 'left' },
+          { id: 'agent:7', label: 'Gabri (Frontend)', type: 'agent', role: 'Canvas UI & PWA', color: '#bc8cff', val: 22, icon: '🎨', hemisphere: 'right' },
+          { id: 'agent:8', label: 'Carlo (QA)', type: 'agent', role: 'Audit, Hardening & Security', color: '#d29922', val: 22, icon: '🛡️', hemisphere: 'left' }
+        ];
+
+        const links = [];
+        const rules = companyMemory.rules || [];
+        const prefs = companyMemory.preferences || [];
+        const graph = companyMemory.skillGraph || { nodes: [], edges: [] };
+
+        (graph.nodes || []).filter(n => n.type === 'skill').forEach(sk => {
+          nodes.push({
+            id: sk.id,
+            label: sk.label,
+            type: 'skill',
+            role: sk.category || 'Competenza',
+            color: '#388bfd',
+            val: 12,
+            icon: '⚡',
+            hemisphere: 'core'
+          });
+        });
+
+        (graph.edges || []).forEach(e => {
+          links.push({
+            source: e.from,
+            target: e.to,
+            color: '#58a6ff77',
+            width: 1.8,
+            particles: 3,
+            speed: 0.006,
+            particleColor: '#79c0ff'
+          });
+        });
+
+        rules.slice(0, 80).forEach((r, idx) => {
+          const rId = r.id || `rule:${idx}`;
+          nodes.push({
+            id: rId,
+            label: r.key || `Regola #${idx+1}`,
+            type: 'rule',
+            role: 'Regola Operativa',
+            description: r.value || '',
+            color: '#bc8cff',
+            val: 8,
+            icon: '📜',
+            hemisphere: 'core'
+          });
+          const targetAgent = String(r.source).includes('Carlo') ? 'agent:8' : String(r.source).includes('Luigi') ? 'agent:6' : 'agent:10';
+          links.push({
+            source: targetAgent,
+            target: rId,
+            color: '#bc8cff44',
+            width: 1.0,
+            particles: 2,
+            speed: 0.005,
+            particleColor: '#d2a8ff'
+          });
+        });
+
+        prefs.slice(0, 60).forEach((p, idx) => {
+          const pId = p.id || `pref:${idx}`;
+          nodes.push({
+            id: pId,
+            label: p.key || `Preferenza #${idx+1}`,
+            type: 'preference',
+            role: 'Preferenza Utente',
+            description: p.value || p.text || '',
+            color: '#f0883e',
+            val: 7,
+            icon: '⭐',
+            hemisphere: 'right'
+          });
+          links.push({
+            source: 'agent:10',
+            target: pId,
+            color: '#f0883e44',
+            width: 1.0,
+            particles: 2,
+            speed: 0.005,
+            particleColor: '#ffa657'
+          });
+        });
+
+        livingBrainData = {
+          nodes: nodes.slice(0, MAX_BRAIN_NODES),
+          links
+        };
+        return livingBrainData;
+      }
+
+      async function initLivingBrain3D() {
+        const viewport = document.getElementById('living-brain-3d-viewport');
+        if (!viewport) return;
+
+        disposeLivingBrain3D();
+        await fetchLivingBrainData();
+        updateLivingBrainHUD();
+
+        const badge = document.getElementById('brain-webgl-badge');
+        const hasWebGL = isWebGLAvailable() && typeof ForceGraph3D !== 'undefined';
+
+        if (!hasWebGL) {
+          if (badge) {
+            badge.style.background = '#d2992222';
+            badge.style.color = '#e3b341';
+            badge.style.borderColor = '#d2992266';
+            badge.textContent = '🟡 2D CANVAS FALLBACK ATTIVA';
+          }
+          renderLivingBrain2DFallback(viewport, livingBrainData);
+          return;
+        }
+
+        if (badge) {
+          badge.style.background = '#23863622';
+          badge.style.color = '#3fb950';
+          badge.style.borderColor = '#23863666';
+          badge.textContent = '🟢 WebGL 3D ACCELERATO';
+        }
+
+        try {
+          livingBrainGraphInstance = ForceGraph3D({ controlType: 'orbit' })(viewport)
+            .graphData(livingBrainData)
+            .nodeId('id')
+            .nodeLabel(node => `
+              <div style="background:#0d1117; color:#f0f6fc; border:1px solid #30363d; border-radius:6px; padding:6px 10px; font-family:sans-serif; font-size:12px; box-shadow:0 4px 14px rgba(0,0,0,0.85); pointer-events:none;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span>${node.icon || '🔹'}</span>
+                  <strong style="color:${node.color}">${escapeHtml(node.label)}</strong>
+                </div>
+                <div style="color:#8b949e; font-size:10px; margin-top:2px;">${escapeHtml(node.role || node.category || node.type)}</div>
+              </div>
+            `)
+            .nodeColor(node => node.color || '#58a6ff')
+            .nodeVal(node => node.val || 8)
+            .nodeResolution(16)
+            .linkOpacity(0.35)
+            .linkColor(link => link.color || '#30363d')
+            .linkWidth(link => link.width || 1.2)
+            .linkDirectionalParticles(link => link.particles || 2)
+            .linkDirectionalParticleSpeed(link => link.speed || 0.005)
+            .linkDirectionalParticleWidth(link => (link.width || 1.2) * 1.5)
+            .linkDirectionalParticleColor(link => link.particleColor || '#79c0ff')
+            .backgroundColor('#030712')
+            .showNavInfo(false)
+            .onNodeClick((node) => {
+              inspectBrainNode(node);
+              if (livingBrainGraphInstance) {
+                const distance = 90;
+                const distRatio = 1 + distance / Math.hypot(node.x || 1, node.y || 1, node.z || 1);
+                livingBrainGraphInstance.cameraPosition(
+                  { x: (node.x || 0) * distRatio, y: (node.y || 0) * distRatio, z: (node.z || 0) * distRatio },
+                  node,
+                  1200
+                );
+              }
+            });
+
+          startBrainAutoOrbit();
+        } catch (err) {
+          console.warn('[LivingBrain] Three.js WebGL error, fallback to 2D:', err.message);
+          if (badge) {
+            badge.style.background = '#d2992222';
+            badge.style.color = '#e3b341';
+            badge.style.borderColor = '#d2992266';
+            badge.textContent = '🟡 2D CANVAS FALLBACK ATTIVA';
+          }
+          renderLivingBrain2DFallback(viewport, livingBrainData);
+        }
+      }
+
+      function disposeLivingBrain3D() {
+        if (brainOrbitInterval) {
+          clearInterval(brainOrbitInterval);
+          brainOrbitInterval = null;
+        }
+        if (fallback2dAnimId) {
+          cancelAnimationFrame(fallback2dAnimId);
+          fallback2dAnimId = null;
+        }
+        if (livingBrainGraphInstance) {
+          try {
+            if (typeof livingBrainGraphInstance.pauseAnimation === 'function') {
+              livingBrainGraphInstance.pauseAnimation();
+            }
+            if (typeof livingBrainGraphInstance._destructor === 'function') {
+              livingBrainGraphInstance._destructor();
+            }
+            // Dispose Three.js Scene and Meshes (Checklist Carlo)
+            const scene = typeof livingBrainGraphInstance.scene === 'function' ? livingBrainGraphInstance.scene() : null;
+            if (scene && typeof scene.traverse === 'function') {
+              scene.traverse(obj => {
+                if (obj.geometry && typeof obj.geometry.dispose === 'function') {
+                  obj.geometry.dispose();
+                }
+                if (obj.material) {
+                  if (Array.isArray(obj.material)) {
+                    obj.material.forEach(m => m && typeof m.dispose === 'function' && m.dispose());
+                  } else if (typeof obj.material.dispose === 'function') {
+                    obj.material.dispose();
+                  }
+                }
+              });
+            }
+            // Dispose Renderer
+            const renderer = typeof livingBrainGraphInstance.renderer === 'function' ? livingBrainGraphInstance.renderer() : null;
+            if (renderer) {
+              if (typeof renderer.dispose === 'function') renderer.dispose();
+              if (typeof renderer.forceContextLoss === 'function') renderer.forceContextLoss();
+            }
+          } catch (err) {
+            console.warn('[LivingBrain] Three.js dispose notice:', err.message);
+          }
+          livingBrainGraphInstance = null;
+        }
+
+        const viewport = document.getElementById('living-brain-3d-viewport');
+        if (viewport) viewport.innerHTML = '';
+      }
+
+      function renderLivingBrain2DFallback(container, data) {
+        container.innerHTML = '';
+        const canvas = document.createElement('canvas');
+        canvas.width = container.clientWidth || 800;
+        canvas.height = container.clientHeight || 500;
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.display = 'block';
+        container.appendChild(canvas);
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const nodes = data.nodes || [];
+        const links = data.links || [];
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        nodes.forEach((n, i) => {
+          if (n.type === 'agent') {
+            const angle = (i * Math.PI * 2) / 4 - Math.PI / 4;
+            n.x2d = centerX + Math.cos(angle) * 160;
+            n.y2d = centerY + Math.sin(angle) * 110;
+          } else {
+            const angle = (i * 137.5 * Math.PI) / 180;
+            const radius = 60 + (i % 6) * 35;
+            n.x2d = centerX + Math.cos(angle) * radius;
+            n.y2d = centerY + Math.sin(angle) * (radius * 0.7);
+          }
+        });
+
+        let step = 0;
+        function draw() {
+          step += 0.02;
+          ctx.fillStyle = '#030712';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          links.forEach(l => {
+            const s = typeof l.source === 'object' ? l.source : nodes.find(n => n.id === l.source);
+            const t = typeof l.target === 'object' ? l.target : nodes.find(n => n.id === l.target);
+            if (!s || !t || s.x2d === undefined || t.x2d === undefined) return;
+
+            ctx.strokeStyle = l.color || '#30363d';
+            ctx.lineWidth = l.width || 1;
+            ctx.beginPath();
+            ctx.moveTo(s.x2d, s.y2d);
+            ctx.lineTo(t.x2d, t.y2d);
+            ctx.stroke();
+
+            const pProgress = (step * (l.speed || 0.005) * 50 + (s.val || 1)) % 1;
+            const px = s.x2d + (t.x2d - s.x2d) * pProgress;
+            const py = s.y2d + (t.y2d - s.y2d) * pProgress;
+            ctx.fillStyle = l.particleColor || '#79c0ff';
+            ctx.beginPath();
+            ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          });
+
+          nodes.forEach(n => {
+            if (n.x2d === undefined) return;
+            const rad = Math.max(n.val * 0.6, 4);
+            ctx.fillStyle = n.color || '#58a6ff';
+            ctx.shadowColor = n.color || '#58a6ff';
+            ctx.shadowBlur = n.type === 'agent' ? 14 : 6;
+            ctx.beginPath();
+            ctx.arc(n.x2d, n.y2d, rad, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            if (n.type === 'agent' || n.type === 'skill') {
+              ctx.fillStyle = '#f0f6fc';
+              ctx.font = '10px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText(n.label, n.x2d, n.y2d + rad + 12);
+            }
+          });
+
+          fallback2dAnimId = requestAnimationFrame(draw);
+        }
+
+        fallback2dAnimId = requestAnimationFrame(draw);
+
+        canvas.addEventListener('click', (e) => {
+          const rect = canvas.getBoundingClientRect();
+          const mx = e.clientX - rect.left;
+          const my = e.clientY - rect.top;
+          const clicked = nodes.find(n => n.x2d !== undefined && Math.hypot(n.x2d - mx, n.y2d - my) < (n.val || 8) + 6);
+          if (clicked) {
+            inspectBrainNode(clicked);
+          }
+        });
+      }
+
+      function startBrainAutoOrbit() {
+        if (brainOrbitInterval) clearInterval(brainOrbitInterval);
+        brainOrbitInterval = setInterval(() => {
+          if (!isBrainAutoOrbiting || !livingBrainGraphInstance) return;
+          brainOrbitAngle += Math.PI / 900;
+          const dist = 380;
+          livingBrainGraphInstance.cameraPosition({
+            x: dist * Math.sin(brainOrbitAngle),
+            z: dist * Math.cos(brainOrbitAngle)
+          });
+        }, 30);
+      }
+
+      function toggleBrainAutoOrbit() {
+        isBrainAutoOrbiting = !isBrainAutoOrbiting;
+        const btn = document.getElementById('btn-brain-auto-orbit');
+        if (btn) {
+          btn.style.color = isBrainAutoOrbiting ? '#58a6ff' : '#8b949e';
+          btn.style.borderColor = isBrainAutoOrbiting ? '#388bfd' : '#30363d';
+        }
+      }
+
+      function resetBrainCamera() {
+        if (livingBrainGraphInstance) {
+          livingBrainGraphInstance.cameraPosition({ x: 0, y: 0, z: 380 }, { x: 0, y: 0, z: 0 }, 1000);
+        }
+      }
+
+      function inspectBrainNode(node) {
+        selectedBrainNode = node;
+        const inspector = document.getElementById('living-brain-inspector');
+        if (!inspector) return;
+
+        const avatarEl = document.getElementById('inspector-node-avatar');
+        const titleEl = document.getElementById('inspector-node-title');
+        const catEl = document.getElementById('inspector-node-category');
+        const contentEl = document.getElementById('inspector-node-content');
+        const metaEl = document.getElementById('inspector-node-meta');
+
+        if (avatarEl) avatarEl.textContent = node.icon || '🔹';
+        if (titleEl) {
+          titleEl.textContent = node.label || node.id;
+          titleEl.style.color = node.color || '#f0f6fc';
+        }
+        if (catEl) catEl.textContent = `${node.role || node.type} • Emisfero ${node.hemisphere || 'centrale'}`;
+        if (contentEl) {
+          contentEl.textContent = node.description || node.text || node.label || 'Neurone sinaptico della memoria condivisa.';
+        }
+        if (metaEl) {
+          const linksCount = livingBrainData.links.filter(l => {
+            const s = typeof l.source === 'object' ? l.source.id : l.source;
+            const t = typeof l.target === 'object' ? l.target.id : l.target;
+            return s === node.id || t === node.id;
+          }).length;
+          metaEl.textContent = `Sinapsi attive: ${linksCount}`;
+        }
+
+        inspector.style.display = 'flex';
+        playRetroSound('delegation');
+      }
+
+      function focusSelectedBrainNode() {
+        if (selectedBrainNode && livingBrainGraphInstance) {
+          const node = selectedBrainNode;
+          const distance = 80;
+          const distRatio = 1 + distance / Math.hypot(node.x || 1, node.y || 1, node.z || 1);
+          livingBrainGraphInstance.cameraPosition(
+            { x: (node.x || 0) * distRatio, y: (node.y || 0) * distRatio, z: (node.z || 0) * distRatio },
+            node,
+            1000
+          );
+        }
+      }
+
+      function filterBrainCategory(cat) {
+        brainActiveFilter = cat;
+        const buttons = document.querySelectorAll('.brain-filter-btn');
+        buttons.forEach(b => {
+          b.style.borderColor = '#30363d';
+          b.style.color = '#8b949e';
+          b.style.background = 'transparent';
+        });
+        if (window.event && window.event.target) {
+          window.event.target.style.borderColor = '#388bfd';
+          window.event.target.style.color = '#58a6ff';
+          window.event.target.style.background = '#21262d';
+        }
+
+        if (cat === 'all') {
+          if (livingBrainGraphInstance) livingBrainGraphInstance.graphData(livingBrainData);
+          return;
+        }
+
+        const filteredNodes = livingBrainData.nodes.filter(n => n.type === cat || (cat === 'rule' && (n.type === 'rule' || n.type === 'fact')));
+        const validIds = new Set(filteredNodes.map(n => n.id));
+        const filteredLinks = livingBrainData.links.filter(l => {
+          const s = typeof l.source === 'object' ? l.source.id : l.source;
+          const t = typeof l.target === 'object' ? l.target.id : l.target;
+          return validIds.has(s) && validIds.has(t);
+        });
+
+        if (livingBrainGraphInstance) {
+          livingBrainGraphInstance.graphData({ nodes: filteredNodes, links: filteredLinks });
+        }
+      }
+
+      function filterBrainNodes(query) {
+        const q = String(query || '').trim().toLowerCase();
+        if (!q) {
+          if (livingBrainGraphInstance) livingBrainGraphInstance.graphData(livingBrainData);
+          return;
+        }
+        const matches = livingBrainData.nodes.filter(n =>
+          (n.label && n.label.toLowerCase().includes(q)) ||
+          (n.description && n.description.toLowerCase().includes(q)) ||
+          (n.role && n.role.toLowerCase().includes(q))
+        );
+        if (matches.length > 0) {
+          inspectBrainNode(matches[0]);
+          if (livingBrainGraphInstance) {
+            focusSelectedBrainNode();
+          }
+        }
+      }
+
+      function updateLivingBrainHUD() {
+        const nCount = document.getElementById('brain-nodes-count');
+        const lCount = document.getElementById('brain-links-count');
+        if (nCount) nCount.textContent = String(livingBrainData.nodes.length);
+        if (lCount) lCount.textContent = String(livingBrainData.links.length);
+      }
+
+      window.openLivingBrainModal = function() {
+        const overlay = document.getElementById('living-brain-modal-overlay');
+        if (overlay) {
+          overlay.style.display = 'flex';
+          initLivingBrain3D();
+          fetchDigestStatus();
+          playRetroSound('standup');
+        }
+      };
+
+      window.closeLivingBrainModal = function() {
+        const overlay = document.getElementById('living-brain-modal-overlay');
+        if (overlay) overlay.style.display = 'none';
+        disposeLivingBrain3D();
+      };
+
+      async function fetchDigestStatus() {
+        try {
+          const res = await fetch('/api/digest/status');
+          if (res.ok) {
+            const data = await res.json();
+            const isEnabled = Boolean(data.enabled);
+            const timeStr = data.time || '02:00';
+
+            const toggle1 = document.getElementById('toggle-daily-digest');
+            const toggle2 = document.getElementById('hud-toggle-daily-digest');
+            if (toggle1) toggle1.checked = isEnabled;
+            if (toggle2) toggle2.checked = isEnabled;
+
+            const timeDisplay = document.getElementById('daily-digest-time-display');
+            if (timeDisplay) timeDisplay.textContent = timeStr;
+
+            const badge = document.getElementById('daily-digest-badge');
+            if (badge) {
+              if (isEnabled) {
+                badge.style.background = '#23863622';
+                badge.style.color = '#3fb950';
+                badge.style.borderColor = '#23863666';
+                badge.textContent = `🟢 Programmato ore ${timeStr}`;
+              } else {
+                badge.style.background = '#8957e522';
+                badge.style.color = '#d2a8ff';
+                badge.style.borderColor = '#8957e566';
+                badge.textContent = '💤 Zero Spreco Quote (In Pausa)';
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('[DailyDigest] Errore fetch stato digest:', err.message);
+        }
+      }
+
+      window.toggleDailyDigest = async function(checked) {
+        try {
+          const res = await fetch('/api/digest/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: checked })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            playRetroSound('complete');
+            const toggle1 = document.getElementById('toggle-daily-digest');
+            const toggle2 = document.getElementById('hud-toggle-daily-digest');
+            if (toggle1) toggle1.checked = data.enabled;
+            if (toggle2) toggle2.checked = data.enabled;
+            fetchDigestStatus();
+            appendLog(10, `[${new Date().toLocaleTimeString()}] 🌙 Daily Digest Notturno: ${data.enabled ? '🟢 ATTIVATO (Report ore 02:00)' : '💤 DISATTIVATO (Zero spreco quote)'}`, 'done');
+          }
+        } catch (err) {
+          console.warn('[DailyDigest] Errore toggle digest:', err.message);
+        }
+      };
+
+      window.triggerDigestOnDemand = async function() {
+        const btn = document.getElementById('btn-digest-run-now');
+        if (btn) btn.disabled = true;
+        try {
+          const res = await fetch('/api/digest/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ force: true, source: 'Web Dashboard' })
+          });
+          const data = await res.json();
+          if (data && data.ok) {
+            playRetroSound('complete');
+            appendLog(10, `[${new Date().toLocaleTimeString()}] 🌙 Daily Digest Notturno generato con successo su Discord!`, 'done');
+            alert('🌙 Daily Digest Notturno generato e inviato su Discord con successo!');
+          } else {
+            alert('⚠️ ' + (data ? data.message : 'Impossibile generare digest'));
+          }
+        } catch (err) {
+          alert('❌ Errore rete digest: ' + err.message);
+        } finally {
+          if (btn) btn.disabled = false;
+        }
+      };
     </script>
 
     <!-- JS ENGINE ORIGINALE PIXEL AGENTS -->

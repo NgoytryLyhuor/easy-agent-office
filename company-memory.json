@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-11-17T00:33:19.472Z",
-  "updatedAt": "2026-11-17T01:10:17.866Z",
+  "updatedAt": "2026-11-17T01:17:23.339Z",
   "rules": [
     {
       "id": "rule-port-isolation",
@@ -49,7 +49,7 @@
       "key": "test-rule-sync",
       "value": "Regola verificata durante collaudo automatico backend",
       "source": "Luigi (Backend)",
-      "timestamp": "2026-11-17T01:10:17.726Z"
+      "timestamp": "2026-11-17T01:17:23.204Z"
     }
   ],
   "preferences": [
@@ -242,8 +242,46 @@
   "dailyDigest": {
     "enabled": false,
     "time": "02:00",
-    "lastRun": "2026-11-17T01:10:17.861Z",
+    "lastRun": "2026-11-17T01:17:23.335Z",
     "history": [
+      {
+        "id": "digest-1794878243335",
+        "date": "2026-11-17",
+        "timestamp": "2026-11-17T01:17:23.335Z",
+        "source": "Test Suite",
+        "activeProject": "AziendaAI",
+        "metrics": {
+          "rulesLearned": 6,
+          "preferencesStored": 2,
+          "toolsActive": 1,
+          "feedbackLogged": 1
+        },
+        "highlights": [
+          "Memoria aziendale aggiornata: 6 regole operative e 2 preferenze",
+          "Custom tools verificati: 1/1 approvati per l'uso",
+          "Workspace attivo: AziendaAI"
+        ],
+        "summaryText": "🌙 Daily Digest [17/11/2026] — Workspace: AziendaAI | Regole: 6 | Preferenze: 2 | Tools: 1"
+      },
+      {
+        "id": "digest-1794877846023",
+        "date": "2026-11-17",
+        "timestamp": "2026-11-17T01:10:46.022Z",
+        "source": "Test Suite",
+        "activeProject": "AziendaAI",
+        "metrics": {
+          "rulesLearned": 6,
+          "preferencesStored": 2,
+          "toolsActive": 1,
+          "feedbackLogged": 1
+        },
+        "highlights": [
+          "Memoria aziendale aggiornata: 6 regole operative e 2 preferenze",
+          "Custom tools verificati: 1/1 approvati per l'uso",
+          "Workspace attivo: AziendaAI"
+        ],
+        "summaryText": "🌙 Daily Digest [17/11/2026] — Workspace: AziendaAI | Regole: 6 | Preferenze: 2 | Tools: 1"
+      },
       {
         "id": "digest-1794877817861",
         "date": "2026-11-17",
