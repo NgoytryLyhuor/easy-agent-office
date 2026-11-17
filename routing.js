@@ -226,7 +226,8 @@ function addProjectToRegistry(name, rawPath) {
   if (!res.ok) return res;
   const list = loadProjectsRegistry();
   const projPath = res.projectPath;
-  const projName = String(name || res.projectName).trim();
+  const rawName = String(name || res.projectName).trim();
+  const projName = rawName.slice(0, 64).replace(/[^\p{L}\p{N}\s\-_.]/gu, '').trim() || 'Progetto';
   const existingIdx = list.findIndex(p => path.resolve(p.path).toLowerCase() === projPath.toLowerCase());
   if (existingIdx >= 0) {
     list[existingIdx].name = projName;

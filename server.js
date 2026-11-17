@@ -38,6 +38,7 @@ const { execFile, exec } = require('child_process');
 const { PNG } = require('pngjs');
 const { setDiscordWebhook, sendDiscordNotification, getDiscordConfig } = require('./discord-bridge');
 const routing = require('./routing');
+const warRoom = require('./war-room');
 const { resolveLanguageServer } = require('./antigravity-path');
 const { initDiscordBot, broadcastToDiscord, sendDiscordPermissionPrompt, sendFinalAgentResponse, updateDiscordUsageMonitor, sendDiscordAnnouncement } = require('./discord-bot');
 
@@ -349,7 +350,7 @@ function dispatchRealTask(agent, rawInput) {
   }
 }
 
-app.use(express.json());
+app.use(express.json({ limit: '512kb' }));
 // Servizio dedicato PWA & Mobile Touch (Idea #7)
 app.get('/sw.js', (req, res) => {
   const swPath = path.join(PUBLIC_DIR, 'sw.js');
@@ -1260,6 +1261,7 @@ wss.on('connection', (ws, req) => {
   ws.on('message', message => {
     try {
       const data = JSON.parse(message);
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
       
       if (data.type === 'webviewReady') {
         sendOfficeInitProtocol(ws);
@@ -1340,6 +1342,15 @@ wss.on('connection', (ws, req) => {
           leaderId: 10,
           leaderName: 'Alberto (CEO)',
           topic,
+          time: new Date().toLocaleTimeString()
+        });
+      } else if (data.type === 'warRoomAlert' || data.type === 'callWarRoomAlert') {
+        broadcast({
+          type: 'warRoomAlert',
+          active: data.active !== false,
+          topic: data.topic || 'Analisi di vulnerabilità critica e simulazione attacco Red Team in corso!',
+          report: data.report || '🚨 REPORT DI ATTACCO RED TEAM: Identificate vulnerabilità sul backend. Mitigazione immediata richiesta!',
+          durationSeconds: data.durationSeconds || 25,
           time: new Date().toLocaleTimeString()
         });
       } else if (data.type === 'setTargetProject') {
@@ -1498,7 +1509,13 @@ app.post('/api/tasks/clear', (req, res) => {
   res.json({ success: true, queue: current });
 });
 
+let lastCeoReportTime = 0;
 app.post('/api/ceo-report', (req, res) => {
+  const now = Date.now();
+  if (now - lastCeoReportTime < 2000) {
+    return res.status(429).json({ ok: false, error: 'Rate limit: attendi 2 secondi tra generazioni report' });
+  }
+  lastCeoReportTime = now;
   const { postToDiscord } = req.body || {};
   const projPath = routing.getTargetProject() || WORKSPACE_DIR;
   const bin = process.platform === 'win32' ? 'git.exe' : 'git';
@@ -1557,7 +1574,10 @@ app.post('/api/ceo-report', (req, res) => {
 });
 
 app.post('/api/permission/request', (req, res) => {
-  const { agentId, tool, command, description } = req.body;
+  const { agentId, tool, command, description } = req.body || {};
+  const cleanTool = String(tool || 'run_command').slice(0, 100);
+  const cleanCommand = String(command || 'git push origin main').slice(0, 256);
+  const cleanDescription = String(description || 'Richiesta autorizzazione per operazione critica.').slice(0, 300);
   const targetId = Number(agentId) || 10;
   const requestId = `perm_${Date.now()}`;
   const targetName = (TEAM.find(a => a.id === targetId) || TEAM[0]).name;
@@ -1567,9 +1587,9 @@ app.post('/api/permission/request', (req, res) => {
     id: targetId,
     agentId: targetId,
     requestId: requestId,
-    tool: tool || 'run_command',
-    command: command || 'git push origin main',
-    description: description || 'Richiesta autorizzazione per operazione critica.',
+    tool: cleanTool,
+    command: cleanCommand,
+    description: cleanDescription,
     time: new Date().toLocaleTimeString()
   });
   broadcast({
@@ -1583,14 +1603,14 @@ app.post('/api/permission/request', (req, res) => {
     id: targetId,
     agentId: targetId,
     toolId: requestId,
-    status: `Richiesta approvazione: ${tool || 'run_command'}`,
-    toolName: tool || 'run_command',
+    status: `Richiesta approvazione: ${cleanTool}`,
+    toolName: cleanTool,
     permissionActive: true
   });
 
   // Notifica interattiva su Discord con bottoni
   try {
-    sendDiscordPermissionPrompt(requestId, targetId, targetName, tool || 'run_command', command || 'git push origin main', description || 'Richiesta autorizzazione per operazione critica.');
+    sendDiscordPermissionPrompt(requestId, targetId, targetName, cleanTool, cleanCommand, cleanDescription);
   } catch (err) {
     console.warn('[Discord Bot] Errore invio prompt autorizzazione:', err.message);
   }
@@ -1599,31 +1619,77 @@ app.post('/api/permission/request', (req, res) => {
 });
 
 app.post('/api/log', (req, res) => {
-  const { agentId, log, tool } = req.body;
+  const { agentId, log, tool } = req.body || {};
+  const cleanLog = String(log || '').slice(0, 300);
+  const cleanTool = tool ? String(tool).slice(0, 100) : '';
   const targetId = Number(agentId) || 10;
   const agent = TEAM.find(a => a.id === targetId) || TEAM[0];
 
-  const logLine = `[${new Date().toLocaleTimeString()}] ${log || ('Attività: ' + tool)}`;
+  const logLine = `[${new Date().toLocaleTimeString()}] ${cleanLog || ('Attività: ' + cleanTool)}`;
   agent.logs.push(logLine);
 
-  if (tool) {
+  if (cleanTool) {
     broadcast({
       type: 'agentToolStart',
       id: agent.id,
       toolId: `tool_${Date.now()}`,
-      status: `Tool: ${tool}`,
-      toolName: tool
+      status: `Tool: ${cleanTool}`,
+      toolName: cleanTool
     });
   }
 
   broadcast({
     type: 'agentActivity',
     agentId: agent.id,
-    tool: tool,
+    tool: cleanTool,
     log: logLine
   });
 
   res.json({ success: true, agent: agent.name, log: logLine });
+});
+
+// Endpoints War Room: Esercitazione Red Team (Carlo) vs Blue Team (Luigi) (Idea #3)
+app.get('/api/war-room/status', (req, res) => {
+  res.json(warRoom.getWarRoomStatus());
+});
+
+app.post('/api/war-room/start', (req, res) => {
+  const { projectPath, scenario, intensity } = req.body || {};
+  const result = warRoom.startWarRoom({
+    projectPath,
+    scenario,
+    intensity,
+    broadcastFn: broadcast,
+    dispatchFn: (agentId, agentName, prompt) => {
+      const ag = TEAM.find(a => a.id === agentId);
+      if (ag) dispatchRealTask(ag, prompt);
+    }
+  });
+  if (!result.ok) {
+    return res.status(400).json(result);
+  }
+  res.json(result);
+});
+
+app.post('/api/war-room/defend', async (req, res) => {
+  const { warRoomId, findings, vulnerabilities, runTests } = req.body || {};
+  const result = await warRoom.handleBlueTeamDefense({
+    warRoomId,
+    findings,
+    vulnerabilities,
+    runTests: runTests !== false,
+    broadcastFn: broadcast,
+    dispatchFn: (agentId, agentName, prompt) => {
+      const ag = TEAM.find(a => a.id === agentId);
+      if (ag) dispatchRealTask(ag, prompt);
+    }
+  });
+  res.json(result);
+});
+
+app.post('/api/war-room/stop', (req, res) => {
+  const result = warRoom.stopWarRoom({ broadcastFn: broadcast });
+  res.json(result);
 });
 
 // Monitor log transcript da Antigravity per live streaming e animazioni

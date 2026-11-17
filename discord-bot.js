@@ -146,7 +146,8 @@ function buildPanelActionRows() {
     new ButtonBuilder().setCustomId('panel_team_status').setLabel('👥 Stato Squadra').setStyle(ButtonStyle.Secondary)
   );
   const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('panel_security_audit').setLabel('🛡️ Audit Sicurezza').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('panel_war_room').setLabel('⚔️ War Room / Red Team Drill').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('panel_security_audit').setLabel('🛡️ Audit Sicurezza').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('panel_git_check').setLabel('🐙 Git Check').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('panel_refresh_quota').setLabel('🔄 Aggiorna Quote').setStyle(ButtonStyle.Primary)
   );
@@ -162,6 +163,7 @@ function getControlPanelEmbed() {
       { name: '📊 Report CEO', value: 'Genera il report esecutivo sprint', inline: true },
       { name: '📢 Standup Meeting', value: 'Convoca la riunione generale', inline: true },
       { name: '👥 Stato Squadra', value: 'Check attività e agenti attivi', inline: true },
+      { name: '⚔️ War Room Drill', value: 'Red Team (Carlo) vs Blue Team (Luigi)', inline: true },
       { name: '🛡️ Audit Sicurezza', value: 'Ispezione codice e dipendenze', inline: true },
       { name: '🐙 Git Check', value: 'Verifica branch e modifiche git', inline: true },
       { name: '🔄 Aggiorna Quote', value: 'Sincronizza telemetria quote live', inline: true }
@@ -383,6 +385,21 @@ function initDiscordBot(onBroadcast) {
         case 'panel_team_status':
           actionTitle = '👥 Richiesta Verifica Stato Squadra';
           actionInstruction = 'Verifica lo stato operativo della squadra (Luigi, Gabri, Carlo) e riepiloga la situazione corrente.';
+          break;
+        case 'panel_war_room':
+          actionTitle = '⚔️ Avvio Esercitazione War Room (Red Team vs Blue Team)';
+          actionInstruction = 'Avvia subito una sessione War Room: Carlo (Red Team) simula attacchi di sicurezza su target, Luigi (Blue Team) risponde e difende.';
+          try {
+            const warRoomMod = require('./war-room');
+            warRoomMod.startWarRoom({
+              broadcastFn: broadcastCallback,
+              dispatchFn: (agentId, agentName, prompt) => {
+                dispatchTaskToSubagent(agentId, agentName, prompt, userTag);
+              }
+            });
+          } catch (err) {
+            console.warn('[Discord Bot] Errore startWarRoom da bottone:', err.message);
+          }
           break;
         case 'panel_security_audit':
           actionTitle = '🛡️ Richiesta Audit Sicurezza';

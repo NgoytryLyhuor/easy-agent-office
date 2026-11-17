@@ -578,6 +578,55 @@
         gap: 8px;
       }
 
+      /* WAR ROOM / RED TEAM MODE (IDEA #3) */
+      @keyframes warRoomBlink {
+        0% {
+          background: #da3633;
+          box-shadow: 0 0 16px rgba(218, 54, 51, 0.95), inset 0 0 10px rgba(255, 255, 255, 0.4);
+          color: #ffffff;
+        }
+        100% {
+          background: #7a1114;
+          box-shadow: 0 0 28px rgba(218, 54, 51, 0.6), inset 0 0 3px rgba(255, 255, 255, 0.1);
+          color: #ffcccc;
+        }
+      }
+      @keyframes warRoomVignettePulse {
+        0% {
+          box-shadow: inset 0 0 35px rgba(218, 54, 51, 0.5), 0 0 25px rgba(218, 54, 51, 0.55);
+          border-color: #da3633;
+        }
+        100% {
+          box-shadow: inset 0 0 85px rgba(218, 54, 51, 0.85), 0 0 45px rgba(218, 54, 51, 0.85);
+          border-color: #f85149;
+        }
+      }
+      .war-room-active #topbar-live-badge {
+        animation: warRoomBlink 0.75s infinite alternate !important;
+        font-weight: 800 !important;
+        letter-spacing: 1px !important;
+        border-color: #ff7b72 !important;
+      }
+      .war-room-active #office-frame-container {
+        animation: warRoomVignettePulse 1.1s infinite alternate !important;
+        border: 2px solid #da3633 !important;
+      }
+      .war-room-active header {
+        border-bottom: 2px solid #da3633 !important;
+        box-shadow: 0 4px 22px rgba(218, 54, 51, 0.4) !important;
+      }
+      .war-room-active #parent-message-popup {
+        border-color: #da3633 !important;
+        box-shadow: 0 16px 44px rgba(0, 0, 0, 0.95), 0 0 32px rgba(218, 54, 51, 0.75) !important;
+      }
+      .war-room-active #parent-popup-title {
+        color: #ff7b72 !important;
+      }
+      .war-room-active #parent-popup-badge {
+        background: #da3633 !important;
+        color: #ffffff !important;
+      }
+
       @media (max-width: 860px) {
         .touch-controls {
           display: flex;
@@ -650,9 +699,9 @@
 
         <!-- TOUCH CONTROLS PER MOBILE / PWA -->
         <div class="touch-controls" id="touch-zoom-controls">
-          <button class="touch-btn" onclick="mobileZoom(1.2)" title="Zoom In">➕</button>
-          <button class="touch-btn" onclick="mobileZoom(0.8)" title="Zoom Out">➖</button>
-          <button class="touch-btn" onclick="mobileResetView()" title="Reset Vista" style="font-size:0.85rem;">🎯</button>
+          <button class="touch-btn" id="touch-zoom-in" onclick="mobileZoom(1.2)" title="Zoom In">➕</button>
+          <button class="touch-btn" id="touch-zoom-out" onclick="mobileZoom(0.8)" title="Zoom Out">➖</button>
+          <button class="touch-btn" id="touch-zoom-reset" onclick="mobileResetView()" title="Reset Vista" style="font-size:0.85rem;">🎯</button>
         </div>
       </div>
 
@@ -740,6 +789,7 @@
           <button class="quick-chip" id="chip-standup" style="border-color:#3fb950; color:#3fb950;" onclick="triggerStandupMeeting()">📢 Convoca Riunione</button>
           <button class="quick-chip" id="chip-report" style="border-color:#f778ba; color:#f778ba;" onclick="openCeoReportModal(false)">📊 Report CEO</button>
           <button class="quick-chip" id="chip-git-push" style="border-color:#238636; color:#3fb950;" onclick="triggerGitCommitPush()">🚀 Git Commit & Push</button>
+          <button class="quick-chip" id="chip-war-room" style="border-color:#da3633; color:#f85149;" onclick="triggerWarRoomAlert()">🚨 War Room</button>
         </div>
 
         <div class="command-bar">
@@ -976,6 +1026,8 @@
           ceoDiscordBtn: '📢 Pubblica su Discord',
           chipReport: '📊 Report CEO',
           chipGitPush: '🚀 Git Commit & Push',
+          chipWarRoom: '🚨 War Room',
+          warRoomBadge: '🚨 WAR ROOM ATTIVA',
           standupHeader: '📢 RIUNIONE GENERALE (STANDUP MEETING)',
           standupWalkStep: '🚶‍♂️ Luigi, Gabri e Carlo raggiungono la scrivania di Alberto...',
           standupTalkStep: '🤝 Team riunito! Allineamento sprint in corso con Alberto (CEO)...',
@@ -1024,6 +1076,8 @@
           ceoDiscordBtn: '📢 Post to Discord',
           chipReport: '📊 CEO Report',
           chipGitPush: '🚀 Git Commit & Push',
+          chipWarRoom: '🚨 War Room',
+          warRoomBadge: '🚨 WAR ROOM ACTIVE',
           standupHeader: '📢 ALL-HANDS STANDUP MEETING',
           standupWalkStep: '🚶‍♂️ Luigi, Gabri & Carlo are gathering at Alberto\'s desk...',
           standupTalkStep: '🤝 Team gathered! Sprint alignment in progress with Alberto (CEO)...',
@@ -1059,6 +1113,10 @@
         const c7 = document.getElementById('chip-standup'); if (c7) c7.textContent = t.chipStandup;
         const c8 = document.getElementById('chip-report'); if (c8) c8.textContent = t.chipReport;
         const cGitPush = document.getElementById('chip-git-push'); if (cGitPush) cGitPush.textContent = t.chipGitPush;
+        const cWar = document.getElementById('chip-war-room'); if (cWar) cWar.textContent = t.chipWarRoom;
+        if (document.body.classList.contains('war-room-active') && lb) {
+          lb.textContent = t.warRoomBadge;
+        }
         const kbBtn = document.getElementById('label-kanban-btn'); if (kbBtn) kbBtn.textContent = t.kanbanBtn;
         const kbTit = document.getElementById('kanban-modal-title'); if (kbTit) kbTit.textContent = t.kanbanTitle;
         const kbClr = document.getElementById('kanban-clear-btn'); if (kbClr) kbClr.textContent = t.kanbanClear;
@@ -1138,7 +1196,6 @@
       const drawerRole = document.getElementById('drawer-agent-role');
       const drawerAvatar = document.getElementById('drawer-agent-avatar');
       const drawerStatusBadge = document.getElementById('drawer-status-badge');
-      const discordStatusBadge = document.getElementById('discord-status-badge');
       const drawerLiveStatus = document.getElementById('drawer-agent-status');
       const drawerStatusText = document.getElementById('drawer-status-text');
       const tokenUsageText = document.getElementById('token-usage-text');
@@ -1721,6 +1778,11 @@
             const btnEl = document.getElementById('project-switcher-btn');
             if (btnEl) btnEl.title = `Progetto Attivo: ${msg.projectPath}`;
           }
+
+          // Idea 3: Allarme War Room / Red Team mode
+          if (msg.type === 'warRoomAlert') {
+            handleWarRoomAlert(msg);
+          }
         } catch (err) {
           console.error('[Webview] Errore ws message:', err);
         }
@@ -1865,9 +1927,11 @@
         const shortFrom = fromName.split(' ')[0];
         const shortTo = toName.split(' ')[0];
         if (parentPopupTitle) {
-          parentPopupTitle.textContent = Number(fromId) === 10
-            ? '📋 DELEGA OPERATIVA CEO'
-            : (Number(toId) === 10 ? '📊 REPORT OPERATIVO PER IL CEO' : '🤝 COLLABORAZIONE TEAM');
+          parentPopupTitle.textContent = (Number(fromId) === 8 && Number(toId) === 6)
+            ? '🚨 REPORT DI ATTACCO RED TEAM'
+            : (Number(fromId) === 10
+              ? '📋 DELEGA OPERATIVA CEO'
+              : (Number(toId) === 10 ? '📊 REPORT OPERATIVO PER IL CEO' : '🤝 COLLABORAZIONE TEAM'));
         }
         parentPopupBadge.textContent = `${shortFrom} ➔ ${shortTo}`;
         parentPopupText.textContent = `🚶 In avvicinamento a ${shortTo}...`;
@@ -2572,7 +2636,8 @@
             complete:   [ { f: 523.25, d: 0.06, t: 'triangle' }, { f: 659.25, d: 0.06, t: 'triangle' }, { f: 783.99, d: 0.11, t: 'triangle' } ],
             permission: [ { f: 440.00, d: 0.09, t: 'sawtooth' }, { f: 349.23, d: 0.12, t: 'sawtooth' } ],
             standup:    [ { f: 587.33, d: 0.07, t: 'square' }, { f: 783.99, d: 0.07, t: 'square' }, { f: 987.77, d: 0.12, t: 'square' } ],
-            lounge:     [ { f: 493.88, d: 0.08, t: 'sine' }, { f: 392.00, d: 0.12, t: 'sine' } ]
+            lounge:     [ { f: 493.88, d: 0.08, t: 'sine' }, { f: 392.00, d: 0.12, t: 'sine' } ],
+            alarm:      [ { f: 880.00, d: 0.12, t: 'sawtooth' }, { f: 440.00, d: 0.10, t: 'sawtooth' }, { f: 880.00, d: 0.12, t: 'sawtooth' }, { f: 440.00, d: 0.10, t: 'sawtooth' } ]
           };
           const seq = patterns[kind] || patterns.delegation;
           let offset = audioCtx.currentTime;
@@ -2716,6 +2781,91 @@
               }));
             }
           }, 3500);
+        }
+      };
+
+      // =========================================================================
+      // INNOVAZIONE #7: WAR ROOM / RED TEAM MODE (ALLARME ROSSO & REPORT CARLO->LUIGI)
+      // =========================================================================
+      let warRoomTimer = null;
+
+      function handleWarRoomAlert(msg) {
+        const active = msg.active !== false;
+        const topic = msg.topic || (appLang === 'it'
+          ? 'Analisi di vulnerabilità critica e simulazione attacco Red Team in corso!'
+          : 'Critical vulnerability audit and Red Team attack simulation in progress!');
+        const report = msg.report || (appLang === 'it'
+          ? '🚨 REPORT DI ATTACCO RED TEAM: Identificate vulnerabilità critiche sul backend. Mitigazione immediata richiesta!'
+          : '🚨 RED TEAM ATTACK REPORT: Critical backend vulnerabilities identified. Immediate mitigation required!');
+        const time = new Date().toLocaleTimeString();
+
+        if (active) {
+          document.body.classList.add('war-room-active');
+          const t = I18N[appLang] || I18N.it;
+          const badgeEl = document.getElementById('topbar-live-badge');
+          if (badgeEl) {
+            badgeEl.textContent = t.warRoomBadge;
+          }
+          playRetroSound('alarm');
+
+          // Log dedicato in rosso nei drawer degli agenti chiave
+          [10, 8, 6].forEach(aId => {
+            appendLog(aId, `[${time}] 🚨 ALLARME WAR ROOM RED TEAM ATTIVATO: "${topic}"`, 'perm-warn');
+          });
+
+          // Carlo si alza e cammina alla scrivania di Luigi per consegnare il report d'attacco
+          agentWorking[8] = true;
+          agentWorking[6] = true;
+          agentLastActiveAt[8] = Date.now();
+          agentLastActiveAt[6] = Date.now();
+          setAgentLounge(8, false, true);
+          setAgentLounge(6, false, true);
+          ensureAgentAtWorkDesk(6);
+
+          triggerAgentDelegationWalk(
+            8,
+            6,
+            'Carlo (QA & Security)',
+            'Luigi (Backend)',
+            report
+          );
+
+          if (warRoomTimer) clearTimeout(warRoomTimer);
+          const duration = (msg.durationSeconds ? msg.durationSeconds * 1000 : 25000);
+          warRoomTimer = setTimeout(() => {
+            handleWarRoomAlert({ active: false });
+          }, duration);
+        } else {
+          document.body.classList.remove('war-room-active');
+          const t = I18N[appLang] || I18N.it;
+          const badgeEl = document.getElementById('topbar-live-badge');
+          if (badgeEl) {
+            badgeEl.textContent = t.liveBadge;
+          }
+          if (warRoomTimer) {
+            clearTimeout(warRoomTimer);
+            warRoomTimer = null;
+          }
+          [10, 8, 6].forEach(aId => {
+            appendLog(aId, `[${time}] 🛡️ War Room conclusa: allineamento difensivo completato.`, 'done');
+          });
+        }
+      }
+
+      window.triggerWarRoomAlert = function() {
+        handleWarRoomAlert({
+          type: 'warRoomAlert',
+          active: true,
+          topic: appLang === 'it' ? 'Simulazione attacco Red Team e audit mitigazione' : 'Red Team attack simulation and mitigation audit',
+          report: appLang === 'it'
+            ? '🚨 REPORT DI ATTACCO RED TEAM: Identificate vulnerabilità critiche da mitigare immediatamente sul backend!'
+            : '🚨 RED TEAM ATTACK REPORT: Critical backend vulnerabilities identified. Immediate mitigation required!'
+        });
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'callWarRoomAlert',
+            active: true
+          }));
         }
       };
 
