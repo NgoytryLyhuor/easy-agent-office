@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "createdAt": "2026-11-17T00:00:00.000Z",
+  "updatedAt": "2026-11-17T00:00:00.000Z",
+  "rules": [
+    {
+      "id": "rule-port-isolation",
+      "category": "rules",
+      "key": "port-isolation",
+      "value": "Il server di preview tunnel deve girare su porta dedicata 3001 separata dalla porta 3000 interna.",
+      "source": "Carlo (QA & Security)",
+      "timestamp": "2026-11-17T00:00:00.000Z"
+    },
+    {
+      "id": "rule-anti-path-traversal",
+      "category": "rules",
+      "key": "anti-path-traversal",
+      "value": "I percorsi di progetto devono essere confinati e non possono accedere a cartelle di sistema.",
+      "source": "Luigi (Backend)",
+      "timestamp": "2026-11-17T00:00:00.000Z"
+    },
+    {
+      "id": "rule-anti-prototype-pollution",
+      "category": "rules",
+      "key": "anti-prototype-pollution",
+      "value": "Rifiuto tassativo di __proto__, constructor e prototype nelle strutture dati aziendali.",
+      "source": "Carlo (QA & Security)",
+      "timestamp": "2026-11-17T00:00:00.000Z"
+    },
+    {
+      "id": "rule-audit-prima-del-commit",
+      "category": "rules",
+      "key": "audit-prima-del-commit",
+      "value": "Ogni miglioria o modifica deve essere controllata e approvata da Carlo (QA Revisor) prima del commit.",
+      "source": "Alberto (CEO)",
+      "timestamp": "2026-11-17T00:00:00.000Z"
+    }
+  ],
+  "preferences": [
+    {
+      "id": "pref-communication-style",
+      "category": "preferences",
+      "key": "communication-style",
+      "value": "Risposte concise in italiano con link cliccabili con protocollo file:// per file e simboli.",
+      "source": "Alberto (CEO)",
+      "timestamp": "2026-11-17T00:00:00.000Z"
+    }
+  ],
+  "feedback": [],
+  "patterns": [],
+  "facts": [],
+  "customTools": [],
+  "skillGraph": {
+    "nodes": [
+      { "id": "agent:10", "key": "alberto-ceo", "label": "Alberto (CEO)", "type": "agent", "color": "#58a6ff" },
+      { "id": "agent:6", "key": "luigi-backend", "label": "Luigi (Backend)", "type": "agent", "color": "#2ea043" },
+      { "id": "agent:7", "key": "gabri-frontend", "label": "Gabri (Frontend)", "type": "agent", "color": "#bc8cff" },
+      { "id": "agent:8", "key": "carlo-qa", "label": "Carlo (QA & Security)", "type": "agent", "color": "#d29922" },
+      { "id": "skill:orchestration", "label": "Orchestrazione & Leadership", "type": "skill", "category": "management" },
+      { "id": "skill:backend-api", "label": "Architettura REST & WebSocket", "type": "skill", "category": "backend" },
+      { "id": "skill:tunnel-networking", "label": "Cloudflare Tunnel & Port Decoupling", "type": "skill", "category": "networking" },
+      { "id": "skill:canvas-rendering", "label": "Canvas 2D & UI Architecture", "type": "skill", "category": "frontend" },
+      { "id": "skill:pwa-service-worker", "label": "PWA, Manifest & Offline Cache", "type": "skill", "category": "frontend" },
+      { "id": "skill:qa-testing", "label": "Test Automation & Invariance Testing", "type": "skill", "category": "qa" },
+      { "id": "skill:security-auditing", "label": "Penetration Testing & Red Teaming", "type": "skill", "category": "security" },
+      { "id": "skill:auto-evolving-memory", "label": "Memory Engine & Skill Graph", "type": "skill", "category": "ai-system" }
+    ],
+    "edges": [
+      { "from": "agent:10", "to": "skill:orchestration", "relation": "owner", "level": 5 },
+      { "from": "agent:6", "to": "skill:backend-api", "relation": "expert", "level": 5 },
+      { "from": "agent:6", "to": "skill:tunnel-networking", "relation": "expert", "level": 5 },
+      { "from": "agent:6", "to": "skill:auto-evolving-memory", "relation": "creator", "level": 5 },
+      { "from": "agent:7", "to": "skill:canvas-rendering", "relation": "expert", "level": 5 },
+      { "from": "agent:7", "to": "skill:pwa-service-worker", "relation": "expert", "level": 5 },
+      { "from": "agent:8", "to": "skill:qa-testing", "relation": "expert", "level": 5 },
+      { "from": "agent:8", "to": "skill:security-auditing", "relation": "expert", "level": 5 }
+    ]
+  },
+  "dailyDigest": {
+    "enabled": false,
+    "time": "02:00",
+    "lastRun": null,
+    "history": []
+  }
+}

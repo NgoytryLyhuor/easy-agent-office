@@ -10,6 +10,7 @@ tests/
 bin/
 *.jsonl
 tasks_queue.json
+company-memory.json
 .last_announced_mode
 .tmp/
 uploads/

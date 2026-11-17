@@ -5,6 +5,7 @@ const path = require('path');
 const { execFile } = require('child_process');
 
 const MEMORY_FILE = path.join(__dirname, 'company-memory.json');
+const EXAMPLE_MEMORY_FILE = path.join(__dirname, 'company-memory.example.json');
 const TMP_MEMORY_FILE = path.join(__dirname, 'company-memory.json.tmp');
 
 // Whitelist binari ammessi per custom tools (ZERO eval, human-in-the-loop)
@@ -170,9 +171,17 @@ function buildInitialSkillGraph() {
 
 // Inizializzazione o caricamento memoria da file
 function loadMemory() {
+  let targetFile = null;
   if (fs.existsSync(MEMORY_FILE)) {
+    targetFile = MEMORY_FILE;
+  } else if (fs.existsSync(EXAMPLE_MEMORY_FILE)) {
+    targetFile = EXAMPLE_MEMORY_FILE;
+    console.log('[Memory Engine] company-memory.json non presente: caricato template iniziale da company-memory.example.json');
+  }
+
+  if (targetFile) {
     try {
-      const raw = fs.readFileSync(MEMORY_FILE, 'utf8');
+      const raw = fs.readFileSync(targetFile, 'utf8');
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
         memoryState = {
@@ -193,10 +202,13 @@ function loadMemory() {
             history: []
           }
         };
+        if (targetFile === EXAMPLE_MEMORY_FILE && !fs.existsSync(MEMORY_FILE)) {
+          persistMemoryAtomic();
+        }
         return;
       }
     } catch (err) {
-      console.warn('[Memory Engine] File company-memory.json non valido, ricreo stato base:', err.message);
+      console.warn(`[Memory Engine] File ${targetFile} non valido, ricreo stato base:`, err.message);
     }
   }
 
@@ -994,5 +1006,7 @@ module.exports = {
   scanForLeaks,
   ALLOWED_BINARIES,
   KEY_REGEX,
-  buildInitialSkillGraph
+  buildInitialSkillGraph,
+  MEMORY_FILE,
+  EXAMPLE_MEMORY_FILE
 };
