@@ -40,6 +40,7 @@ const { setDiscordWebhook, sendDiscordNotification, getDiscordConfig } = require
 const routing = require('./routing');
 const warRoom = require('./war-room');
 const tunnelManager = require('./tunnel-manager');
+const memoryEngine = require('./memory-engine');
 const { resolveLanguageServer } = require('./antigravity-path');
 const { initDiscordBot, broadcastToDiscord, sendDiscordPermissionPrompt, sendFinalAgentResponse, updateDiscordUsageMonitor, sendDiscordAnnouncement } = require('./discord-bot');
 
@@ -77,6 +78,11 @@ function saveTaskQueue(tasks) {
   } catch (err) {
     console.error('[Queue] Errore salvataggio coda atomica:', err.message);
   }
+}
+
+// Auto-Evolving Memory & Skill Graph (Idea #5)
+function loadMemoryData() {
+  return memoryEngine.getMemory();
 }
 
 // Whitelist comandi consentiti (Tier 1 Sandbox)
@@ -782,6 +788,8 @@ function broadcast(data) {
   });
 }
 
+memoryEngine.init({ broadcastFn: broadcast });
+
 // Invia l'intero protocollo di inizializzazione alla Webview
 function sendOfficeInitProtocol(ws) {
   // 1. Office Access & Impostazioni
@@ -894,6 +902,16 @@ function sendOfficeInitProtocol(ws) {
   ws.send(JSON.stringify({
     type: 'tunnelStatusChanged',
     ...tunnelManager.getStatus()
+  }));
+  ws.send(JSON.stringify({
+    type: 'memoryUpdated',
+    memory: memoryEngine.getMemory(),
+    skillGraph: memoryEngine.getSkillGraph()
+  }));
+  ws.send(JSON.stringify({
+    type: 'memoryLoaded',
+    memory: memoryEngine.getMemory(),
+    skillGraph: memoryEngine.getSkillGraph()
   }));
 
   if (lastQuotaData) {
@@ -1717,6 +1735,74 @@ app.post('/api/tunnel/start', async (req, res) => {
 
 app.post('/api/tunnel/stop', async (req, res) => {
   const result = await tunnelManager.stopTunnel(broadcast, 'api_request');
+  res.json(result);
+});
+
+// Endpoints Memoria & Skill Graph Aziendale (Idea #5 - Auto-Evolving Memory)
+app.get('/api/memory', (req, res) => {
+  res.json({
+    ok: true,
+    memory: memoryEngine.getMemory(),
+    skillGraph: memoryEngine.getSkillGraph()
+  });
+});
+
+app.get('/api/memory/skills', (req, res) => {
+  res.json({
+    ok: true,
+    skillGraph: memoryEngine.getSkillGraph()
+  });
+});
+
+app.post('/api/memory/learn', (req, res) => {
+  const { category, key, value, text, source, type } = req.body || {};
+  const cleanVal = (value !== undefined && value !== null) ? value : (text || '');
+  const cleanCat = category || (type === 'rule' ? 'rules' : 'facts');
+  let cleanKey = key;
+  if (!cleanKey) {
+    const candidate = String(cleanVal).trim().slice(0, 32).toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, '-');
+    cleanKey = candidate.length >= 2 ? candidate : `fact-${Date.now().toString(36)}`;
+  }
+  const cleanSource = source || 'API User';
+
+  const result = memoryEngine.learnFact(cleanCat, cleanKey, cleanVal, cleanSource);
+  if (!result.ok) {
+    return res.status(400).json(result);
+  }
+
+  res.json({
+    ok: true,
+    fact: result.fact,
+    targetBucket: result.targetBucket,
+    memory: memoryEngine.getMemory(),
+    skillGraph: memoryEngine.getSkillGraph()
+  });
+});
+
+app.post('/api/memory/tool/register', (req, res) => {
+  const { toolName, code, description, binary, source } = req.body || {};
+  const result = memoryEngine.registerCustomTool(toolName, code, description, { binary, source });
+  if (!result.ok) {
+    return res.status(400).json(result);
+  }
+  res.json(result);
+});
+
+app.post('/api/memory/tool/approve', (req, res) => {
+  const { toolName, approvedBy } = req.body || {};
+  const result = memoryEngine.approveCustomTool(toolName, approvedBy);
+  if (!result.ok) {
+    return res.status(400).json(result);
+  }
+  res.json(result);
+});
+
+app.post('/api/memory/tool/execute', async (req, res) => {
+  const { toolName, args, timeoutMs } = req.body || {};
+  const result = await memoryEngine.executeCustomTool(toolName, args, timeoutMs);
+  if (!result.ok) {
+    return res.status(400).json(result);
+  }
   res.json(result);
 });
 

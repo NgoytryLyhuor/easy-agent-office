@@ -151,6 +151,7 @@ function buildPanelActionRows() {
     new ButtonBuilder().setCustomId('panel_security_audit').setLabel('🛡️ Audit Sicurezza').setStyle(ButtonStyle.Secondary)
   );
   const row3 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('panel_memory_view').setLabel('🧬 Memoria & Skill').setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId('panel_git_check').setLabel('🐙 Git Check').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('panel_refresh_quota').setLabel('🔄 Aggiorna Quote').setStyle(ButtonStyle.Primary)
   );
@@ -169,6 +170,7 @@ function getControlPanelEmbed() {
       { name: '🌐 Live Preview Mobile', value: 'Tunnel pubblico Cloudflare (HTTPS) per test da smartphone', inline: true },
       { name: '⚔️ War Room Drill', value: 'Red Team (Carlo) vs Blue Team (Luigi)', inline: true },
       { name: '🛡️ Audit Sicurezza', value: 'Ispezione codice e dipendenze', inline: true },
+      { name: '🧬 Memoria & Skill', value: 'Riepilogo regole, preferenze e grafo skill', inline: true },
       { name: '🐙 Git Check', value: 'Verifica branch e modifiche git', inline: true },
       { name: '🔄 Aggiorna Quote', value: 'Sincronizza telemetria quote live', inline: true }
     )
@@ -323,6 +325,90 @@ function initDiscordBot(onBroadcast) {
       return;
     }
 
+    if (content.toLowerCase().startsWith('!learn')) {
+      const learnArg = content.replace(/^!learn\s*/i, '').trim();
+      if (!learnArg) {
+        await message.channel.send('💡 **Sintassi comando !learn:**\n`!learn <regola o preferenza>`\n*Esempio:* `!learn preferenza communication-style: Risposte concise e link cliccabili`\n*Esempio:* `!learn regola zero-eval: Vietato l\'uso di eval nei custom tools`').catch(() => {});
+        return;
+      }
+
+      try {
+        const memoryEngine = require('./memory-engine');
+        let category = 'rules';
+        let key = '';
+        let value = learnArg;
+
+        const lower = learnArg.toLowerCase();
+        let stripped = learnArg;
+        if (lower.startsWith('regola ') || lower.startsWith('rule ')) {
+          category = 'rules';
+          stripped = learnArg.replace(/^(regola|rule)\s+/i, '');
+        } else if (lower.startsWith('preferenza ') || lower.startsWith('preference ')) {
+          category = 'preferences';
+          stripped = learnArg.replace(/^(preferenza|preference)\s+/i, '');
+        } else if (lower.startsWith('feedback ')) {
+          category = 'feedback';
+          stripped = learnArg.replace(/^feedback\s+/i, '');
+        }
+
+        const colonIdx = stripped.indexOf(':');
+        const eqIdx = stripped.indexOf('=');
+        const splitIdx = (colonIdx > 0 && (eqIdx === -1 || colonIdx < eqIdx)) ? colonIdx : eqIdx;
+
+        if (splitIdx > 1 && splitIdx <= 30) {
+          const candidateKey = stripped.slice(0, splitIdx).trim().replace(/[^a-zA-Z0-9_\-:. ]/g, '').replace(/\s+/g, '-').toLowerCase();
+          const candidateVal = stripped.slice(splitIdx + 1).trim();
+          if (candidateKey.length >= 2 && candidateKey.length <= 64 && candidateVal.length > 0) {
+            key = candidateKey;
+            value = candidateVal;
+          }
+        }
+
+        if (!key) {
+          const words = stripped.split(/\s+/).slice(0, 4).join('-').replace(/[^a-zA-Z0-9_\-]/g, '').toLowerCase();
+          key = words.slice(0, 32) || `learned-${Date.now().toString(36)}`;
+          if (key.length < 2) key = `fact-${Date.now().toString(36)}`;
+          value = stripped;
+        }
+
+        const authorName = message.author.tag || message.author.username || 'Discord User';
+        const res = memoryEngine.learnFact(category, key, value, `Discord (${authorName})`);
+
+        if (!res.ok) {
+          await message.channel.send(`❌ **Impossibile memorizzare:** ${res.error}`).catch(() => {});
+          return;
+        }
+
+        const embedSuccess = new EmbedBuilder()
+          .setTitle('🧬 Nuova Conoscenza Appresa!')
+          .setDescription('L\'informazione è stata acquisita e sincronizzata nel **Memory Engine** aziendale.')
+          .setColor(0x2ea043)
+          .addFields(
+            { name: 'Categoria', value: `\`${res.fact.category}\``, inline: true },
+            { name: 'Chiave', value: `\`${res.fact.key}\``, inline: true },
+            { name: 'Fonte', value: `\`${res.fact.source}\``, inline: true },
+            { name: 'Valore', value: `${res.fact.value}` }
+          )
+          .setTimestamp();
+
+        await message.channel.send({ embeds: [embedSuccess] }).catch(() => {});
+
+        if (broadcastCallback) {
+          broadcastCallback({
+            type: 'memoryUpdated',
+            subType: 'factLearned',
+            fact: res.fact,
+            memory: memoryEngine.getMemory(),
+            skillGraph: memoryEngine.getSkillGraph(),
+            source: `Discord (${authorName})`
+          });
+        }
+      } catch (err) {
+        await message.channel.send(`⚠️ Errore durante l'apprendimento: ${err.message}`).catch(() => {});
+      }
+      return;
+    }
+
     if (content.startsWith('!')) {
       const parts = content.slice(1).split(' ');
       const prefix = parts[0].toLowerCase();
@@ -458,6 +544,47 @@ function initDiscordBot(onBroadcast) {
           actionTitle = '🛡️ Richiesta Audit Sicurezza';
           actionInstruction = 'Coordina con Carlo un audit di sicurezza completo del backend, routing e dipendenze.';
           break;
+        case 'panel_memory_view': {
+          actionTitle = '🧬 Consultazione Memoria & Skill Graph Aziendale';
+          actionInstruction = 'Genera e visualizza il riepilogo delle regole operative, preferenze e grafo skill appreso.';
+          try {
+            const memoryEngine = require('./memory-engine');
+            const mem = memoryEngine.getMemory();
+            const skills = memoryEngine.getSkillGraph();
+            const guildObj = interaction.guild;
+            const albertoChannel = guildObj ? guildObj.channels.cache.find(c => c.isTextBased() && (c.name.includes('alberto') || c.name.includes('ceo'))) : null;
+
+            if (albertoChannel) {
+              const rulesText = mem.rules && mem.rules.length > 0
+                ? mem.rules.slice(0, 5).map(r => `• **${r.key}**: ${r.value} *(da ${r.source})*`).join('\n')
+                : '*Nessuna regola salvata*';
+              const prefsText = mem.preferences && mem.preferences.length > 0
+                ? mem.preferences.slice(0, 5).map(p => `• **${p.key}**: ${p.value} *(da ${p.source})*`).join('\n')
+                : '*Nessuna preferenza salvata*';
+              const toolsText = mem.customTools && mem.customTools.length > 0
+                ? mem.customTools.slice(0, 5).map(t => `• **${t.name}** [${t.binary}]: ${t.description} (${t.approved ? '✅ Approvato' : '⏳ In attesa di approvazione'})`).join('\n')
+                : '*Nessun custom tool registrato*';
+
+              const memEmbed = new EmbedBuilder()
+                .setTitle('🧬 Memoria Aziendale & Grafo Competenze — AziendaAI')
+                .setDescription('Riepilogo delle regole operative, preferenze e competenze attive nel sistema auto-evolutivo.')
+                .setColor(0x2ea043)
+                .addFields(
+                  { name: `📜 Regole Operative (${mem.rules.length})`, value: rulesText.slice(0, 1024) },
+                  { name: `⭐ Preferenze Utente (${mem.preferences.length})`, value: prefsText.slice(0, 1024) },
+                  { name: `🛠️ Custom Tools Dichiarativi (${mem.customTools.length})`, value: toolsText.slice(0, 1024) },
+                  { name: `🌐 Grafo Competenze`, value: `**Nodi totali:** ${skills.nodes.length} (${skills.totalSkills} skill, ${skills.totalTools} tool, ${skills.totalAgents} agenti)\n**Connessioni:** ${skills.edges.length} relazioni attive`, inline: false }
+                )
+                .setFooter({ text: `Auto-Evolving Memory • Ultimo aggiornamento: ${new Date(mem.updatedAt).toLocaleTimeString()}` })
+                .setTimestamp();
+
+              await albertoChannel.send({ embeds: [memEmbed] }).catch(() => {});
+            }
+          } catch (err) {
+            console.warn('[Discord Bot] Errore visualizzazione memoria da bottone:', err.message);
+          }
+          break;
+        }
         case 'panel_git_check':
           actionTitle = '🐙 Richiesta Git Status & Check';
           actionInstruction = 'Controlla lo stato git del repository (git status, branch, file modificati).';
