@@ -1536,6 +1536,7 @@ app.post('/api/tasks/clear', (req, res) => {
     current = [];
   }
   saveTaskQueue(current);
+  broadcast({ type: 'tasksQueueUpdated', queue: current, mode: routing.getMode() });
   res.json({ success: true, queue: current });
 });
 

@@ -1712,6 +1712,7 @@
       // SISTEMA AUTOMATICO BILINGUE IT / EN (Per te in Italiano, per utenti esteri in Inglese)
       // =========================================================================
       let appLang = localStorage.getItem('aziendaai_lang') || ((navigator.language || 'it').toLowerCase().startsWith('it') ? 'it' : 'en');
+      let currentTunnelState = { active: false, status: 'inactive' };
       const I18N = {
         it: {
           liveBadge: 'SALA OPERATIVA LIVE',
@@ -1944,7 +1945,7 @@
         const bClose = document.getElementById('modal-brain-close-btn'); if (bClose) bClose.textContent = t.brainClose;
         const inp = document.getElementById('task-input'); if (inp) inp.placeholder = t.inputPh;
         const sBtn = document.getElementById('send-task-btn'); if (sBtn) sBtn.textContent = t.sendBtn;
-        if (typeof updateTunnelUI === 'function') updateTunnelUI(currentTunnelState);
+        if (typeof updateTunnelUI === 'function' && typeof currentTunnelState !== 'undefined') updateTunnelUI(currentTunnelState);
         [10, 6, 7, 8].forEach(id => {
           if (!agentStatuses[id] || agentStatuses[id].includes('Idle')) {
             agentStatuses[id] = t.idle;
@@ -3045,7 +3046,7 @@
         const isAlreadyAtTarget = targetSeatObj && (ch.tileCol === targetSeatObj.seatCol && ch.tileRow === targetSeatObj.seatRow);
 
         if (agentOnSofa[id] === onSofa) {
-          if (!isAlreadyAtTarget && ch.seatId !== targetSeat) {
+          if (!isAlreadyAtTarget) {
             moveAgentToSeat(id, targetSeat, onSofa);
           } else if (onSofa && isAlreadyAtTarget) {
             ch.isActive = false;
@@ -3112,14 +3113,14 @@
           if (!ch || ch.isDelivering) return; // Se sta camminando per una consegna di delega, non interrompere
           if (ch.path && ch.path.length > 0) return; // Carlo QA: Lascia completare la camminata, non resettare ogni 2s!
 
-          // Carlo QA: Sblocca agentWorking se non ci sono task in coda e sono passati i secondi di timeout
+          // Sblocca agentWorking se non ci sono task in coda né autorizzazioni pendenti
           const hasQueueTask = kanbanTasks && kanbanTasks.some(t => Number(t.agentId) === id && (t.status === 'running' || t.status === 'dispatched'));
-          if (!hasQueueTask && !activePermissions[id] && (now - (agentLastActiveAt[id] || 0) > IDLE_LOUNGE_TIMEOUT_MS)) {
+          if (!hasQueueTask && !activePermissions[id]) {
             agentWorking[id] = false;
             clearAgentOfficeTool(id);
           }
 
-          const isActivelyWorking = Boolean(agentWorking[id]) || (now - (agentLastActiveAt[id] || 0) < IDLE_LOUNGE_TIMEOUT_MS);
+          const isActivelyWorking = Boolean(agentWorking[id]);
 
           if (isActivelyWorking) {
             // DEVE STARE AL PC ALLA SCRIVANIA
@@ -3715,6 +3716,10 @@
             warRoomTimer = null;
           }
           [10, 8, 6].forEach(aId => {
+            agentWorking[aId] = false;
+            agentLastActiveAt[aId] = Date.now() - 5000;
+            clearAgentOfficeTool(aId);
+            setAgentLounge(aId, true, false);
             appendLog(aId, `[${time}] 🛡️ War Room conclusa: allineamento difensivo completato.`, 'done');
           });
         }
@@ -3834,7 +3839,7 @@
       // =========================================================================
       // INNOVAZIONE #8: LIVE PREVIEW TUNNEL & QR CODE MOBILE (IDEA #4)
       // =========================================================================
-      let currentTunnelState = {
+      currentTunnelState = {
         active: false,
         status: 'inactive',
         url: null,
@@ -4183,19 +4188,21 @@
         }
       }
 
-      window.openMemoryModal = function() {
+      function openMemoryModal() {
         const el = document.getElementById('memory-modal-overlay');
         if (el) {
           el.style.display = 'flex';
-          switchMemoryTab(activeMemoryTab);
+          switchMemoryTab(activeMemoryTab || 'rules');
           fetchMemoryData();
         }
-      };
+      }
+      window.openMemoryModal = openMemoryModal;
 
-      window.closeMemoryModal = function() {
+      function closeMemoryModal() {
         const el = document.getElementById('memory-modal-overlay');
         if (el) el.style.display = 'none';
-      };
+      }
+      window.closeMemoryModal = closeMemoryModal;
 
       window.submitMemoryLearn = async function() {
         const catEl = document.getElementById('memory-input-category');
@@ -4793,7 +4800,7 @@
         if (lCount) lCount.textContent = String(livingBrainData.links.length);
       }
 
-      window.openLivingBrainModal = function() {
+      function openLivingBrainModal() {
         const overlay = document.getElementById('living-brain-modal-overlay');
         if (overlay) {
           overlay.style.display = 'flex';
@@ -4801,13 +4808,15 @@
           fetchDigestStatus();
           playRetroSound('standup');
         }
-      };
+      }
+      window.openLivingBrainModal = openLivingBrainModal;
 
-      window.closeLivingBrainModal = function() {
+      function closeLivingBrainModal() {
         const overlay = document.getElementById('living-brain-modal-overlay');
         if (overlay) overlay.style.display = 'none';
         disposeLivingBrain3D();
-      };
+      }
+      window.closeLivingBrainModal = closeLivingBrainModal;
 
       async function fetchDigestStatus() {
         try {
@@ -4890,6 +4899,22 @@
           if (btn) btn.disabled = false;
         }
       };
+
+      // Gestione ridondante e ultra-robusta dei click per Living Brain 3D e Memoria
+      document.addEventListener('click', (e) => {
+        const brainTrigger = e.target.closest('#living-brain-btn, #chip-living-brain');
+        if (brainTrigger) {
+          e.preventDefault();
+          openLivingBrainModal();
+          return;
+        }
+        const memTrigger = e.target.closest('#memory-graph-btn, #chip-memory');
+        if (memTrigger) {
+          e.preventDefault();
+          openMemoryModal();
+          return;
+        }
+      });
     </script>
 
     <!-- JS ENGINE ORIGINALE PIXEL AGENTS -->
