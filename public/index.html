@@ -688,6 +688,7 @@
         <button id="project-switcher-btn" onclick="openProjectModal()" title="Cambia Progetto Target / Switch Target Workspace" style="background:#21262d; color:#3fb950; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px;">📂 <span id="label-project-btn">Progetto:</span> <code id="active-project-name" style="color:#f0f6fc; font-family:Consolas,monospace;">AziendaAI</code></button>
         <button id="topbar-tunnel-btn" onclick="openTunnelModal()" title="Mobile Preview Tunnel & QR Code (Idea #4)" style="background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">🌐 <span id="label-topbar-tunnel">Mobile Preview:</span> <span id="topbar-tunnel-badge" style="background:#30363d; color:#8b949e; font-size:0.68rem; padding:1px 6px; border-radius:10px; font-weight:700;">Offline</span></button>
         <button id="kanban-toggle-btn" onclick="openKanbanModal()" style="background:#21262d; color:#58a6ff; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px;">📋 <span id="label-kanban-btn">Lavagna Task</span> <span id="kanban-count-badge" style="background:#1f6feb; color:#fff; border-radius:99px; padding:1px 6px; font-size:0.68rem;">0</span></button>
+        <button id="memory-graph-btn" onclick="openMemoryModal()" title="Memoria & Skill Graph Aziendale (Idea #5)" style="background:#21262d; color:#bc8cff; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px;">🧬 <span id="label-memory-btn">Memoria & Skill</span></button>
         <button id="sound-toggle-btn" onclick="toggleRetroSound()" title="Effetti Sonori 8-Bit / 8-Bit Sound Effects" style="background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:5px 9px; font-size:0.78rem; font-weight:700; cursor:pointer;">🔊</button>
         <button id="lang-toggle-btn" onclick="toggleAppLang()" style="background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer;">🇮🇹 IT</button>
       </div>
@@ -815,6 +816,7 @@
           <button class="quick-chip" id="chip-report" style="border-color:#f778ba; color:#f778ba;" onclick="openCeoReportModal(false)">📊 Report CEO</button>
           <button class="quick-chip" id="chip-git-push" style="border-color:#238636; color:#3fb950;" onclick="triggerGitCommitPush()">🚀 Git Commit & Push</button>
           <button class="quick-chip" id="chip-war-room" style="border-color:#da3633; color:#f85149;" onclick="triggerWarRoomAlert()">🚨 War Room</button>
+          <button class="quick-chip" id="chip-memory" style="border-color:#a371f7; color:#d2a8ff;" onclick="openMemoryModal()">🧬 Memoria & Skill</button>
         </div>
 
         <div class="command-bar">
@@ -1078,6 +1080,123 @@
       </div>
     </div>
 
+    <!-- MODALE MEMORIA & SKILL GRAPH AZIENDALE (IDEA #5) -->
+    <div id="memory-modal-overlay" onclick="if(event.target===this) closeMemoryModal()" style="
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 10004;
+      background: rgba(1, 4, 9, 0.82);
+      backdrop-filter: blur(5px);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    ">
+      <div style="
+        width: 100%;
+        max-width: 880px;
+        max-height: 88vh;
+        background: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 12px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      ">
+        <!-- MODAL HEADER -->
+        <div style="padding: 14px 20px; background: #161b22; border-bottom: 1px solid #30363d; display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 1.3rem;">🧬</span>
+            <div>
+              <h2 id="memory-modal-title" style="font-size: 1rem; color: #f0f6fc; margin: 0;">Memoria & Skill Graph Aziendale — Auto-Evolving Brain</h2>
+              <div id="memory-modal-desc" style="font-size: 0.72rem; color: #8b949e; margin-top: 2px;">Preferenze persistenti, regole operative apprese e grafo di competenze del team</div>
+            </div>
+          </div>
+          <button onclick="closeMemoryModal()" style="background:#da3633; color:#fff; border:none; border-radius:6px; padding:4px 10px; font-size:0.78rem; font-weight:700; cursor:pointer;">✕</button>
+        </div>
+
+        <!-- TAB NAVIGATION -->
+        <div style="display: flex; gap: 4px; padding: 10px 20px; background: #0b0e14; border-bottom: 1px solid #30363d; overflow-x: auto;">
+          <button class="memory-tab-btn" id="tab-btn-memory-prefs" onclick="switchMemoryTab('prefs')" style="background:#21262d; color:#58a6ff; border:1px solid #388bfd; border-radius:6px; padding:5px 12px; font-size:0.75rem; font-weight:700; cursor:pointer; white-space:nowrap;">🌟 Preferenze Utente (<span id="count-memory-prefs">0</span>)</button>
+          <button class="memory-tab-btn" id="tab-btn-memory-rules" onclick="switchMemoryTab('rules')" style="background:transparent; color:#8b949e; border:1px solid transparent; border-radius:6px; padding:5px 12px; font-size:0.75rem; font-weight:600; cursor:pointer; white-space:nowrap;">📜 Regole Operative (<span id="count-memory-rules">0</span>)</button>
+          <button class="memory-tab-btn" id="tab-btn-memory-skills" onclick="switchMemoryTab('skills')" style="background:transparent; color:#8b949e; border:1px solid transparent; border-radius:6px; padding:5px 12px; font-size:0.75rem; font-weight:600; cursor:pointer; white-space:nowrap;">🕸️ Grafo Skill & Tool</button>
+          <button class="memory-tab-btn" id="tab-btn-memory-learn" onclick="switchMemoryTab('learn')" style="background:transparent; color:#8b949e; border:1px solid transparent; border-radius:6px; padding:5px 12px; font-size:0.75rem; font-weight:600; cursor:pointer; white-space:nowrap;">➕ Apprendi Regola</button>
+        </div>
+
+        <!-- TAB CONTENTS CONTAINER -->
+        <div style="padding: 16px 20px; overflow-y: auto; flex: 1;">
+          <!-- 1. TAB PREFERENZE UTENTE -->
+          <div id="memory-tab-prefs" class="memory-tab-content">
+            <div id="memory-prefs-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+          </div>
+
+          <!-- 2. TAB REGOLE OPERATIVE -->
+          <div id="memory-tab-rules" class="memory-tab-content" style="display: none;">
+            <div id="memory-rules-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+          </div>
+
+          <!-- 3. TAB GRAFO SKILL & TOOL -->
+          <div id="memory-tab-skills" class="memory-tab-content" style="display: none;">
+            <div id="memory-skills-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 12px;"></div>
+          </div>
+
+          <!-- 4. TAB APPRENDI NUOVA REGOLA (FORM COMPATTO) -->
+          <div id="memory-tab-learn" class="memory-tab-content" style="display: none;">
+            <div style="background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+              <div style="font-size: 0.82rem; font-weight: 700; color: #f0f6fc; display: flex; align-items: center; gap: 6px;">
+                <span>🧠</span> <span id="label-memory-form-heading">Registra una Nuova Regola o Preferenza nel Brain Aziendale</span>
+              </div>
+              <div>
+                <label id="label-memory-input-cat" style="display: block; font-size: 0.74rem; color: #8b949e; margin-bottom: 4px;">Tipo & Categoria:</label>
+                <select id="memory-input-category" style="width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 7px 10px; color: #e6edf3; font-size: 0.78rem;">
+                  <option value="rules">📜 Regola Operativa (Workflow & Standard)</option>
+                  <option value="preferences">⭐ Preferenza: Qualità del Codice & Stile</option>
+                  <option value="Security & QA">🛡️ Preferenza: Sicurezza & Hardening</option>
+                  <option value="UI & Frontend">🎨 Preferenza: UI/UX & Responsive</option>
+                  <option value="facts">💡 Fatto / Conoscenza di Dominio</option>
+                </select>
+              </div>
+              <div>
+                <label id="label-memory-input-txt" style="display: block; font-size: 0.74rem; color: #8b949e; margin-bottom: 4px;">Contenuto della Regola o Preferenza:</label>
+                <textarea id="memory-input-text" rows="3" placeholder="Es: Quando si modifica il database, eseguire sempre backup preventivo..." style="width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px 10px; color: #f0f6fc; font-size: 0.78rem; font-family: inherit; resize: vertical;"></textarea>
+              </div>
+              <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 160px;">
+                  <label id="label-memory-input-conf" style="display: block; font-size: 0.74rem; color: #8b949e; margin-bottom: 4px;">Livello di Confidenza:</label>
+                  <select id="memory-input-confidence" style="width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 6px 10px; color: #e6edf3; font-size: 0.78rem;">
+                    <option value="1.0">100% — Regola Assoluta / Direttiva CEO</option>
+                    <option value="0.95" selected>95% — Alta Priorità (Consigliata)</option>
+                    <option value="0.90">90% — Standard Operativo</option>
+                    <option value="0.80">80% — Preferenza Flessibile</option>
+                  </select>
+                </div>
+                <div style="flex: 1; min-width: 160px;">
+                  <label id="label-memory-input-src" style="display: block; font-size: 0.74rem; color: #8b949e; margin-bottom: 4px;">Sorgente:</label>
+                  <select id="memory-input-source" style="width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 6px 10px; color: #e6edf3; font-size: 0.78rem;">
+                    <option value="Alberto (CEO)">👔 Alberto (CEO)</option>
+                    <option value="Luigi (Backend)">⚙️ Luigi (Backend)</option>
+                    <option value="Gabri (Frontend)">🎨 Gabri (Frontend)</option>
+                    <option value="Carlo (QA)">🛡️ Carlo (QA)</option>
+                  </select>
+                </div>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                <span id="memory-form-status" style="font-size: 0.75rem; color: #3fb950; min-height: 18px;"></span>
+                <button id="btn-memory-submit" onclick="submitMemoryLearn()" style="background: #238636; color: #fff; border: none; border-radius: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px;">🧬 Apprendi & Registra</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODAL FOOTER -->
+        <div style="padding: 12px 20px; background: #161b22; border-top: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center;">
+          <span id="memory-modal-footer-note" style="font-size: 0.72rem; color: #8b949e;">💡 La memoria aziendale persiste tra i riavvii e guida le decisioni autonome degli agenti.</span>
+          <button id="modal-memory-close-btn" onclick="closeMemoryModal()" style="background:#21262d; color:#c9d1d9; border:1px solid #30363d; border-radius:6px; padding:6px 14px; font-size:0.78rem; cursor:pointer;">Chiudi</button>
+        </div>
+      </div>
+    </div>
+
     <!-- SCRIPT BRIDGE PER SINCRONIZZARE TOPBAR, TENDINA E MOTORE CANVAS -->
     <script>
       // =========================================================================
@@ -1141,6 +1260,16 @@
           tunnelQrBtn: '📱 QR Code & Link',
           tunnelOpenBrowserBtn: '🌐 Apri nel Browser',
           tunnelCloseBtn: 'Chiudi',
+          chipMemory: '🧬 Memoria & Skill',
+          memoryBtn: 'Memoria & Skill',
+          memoryModalTitle: '🧬 Memoria & Skill Graph Aziendale — Auto-Evolving Brain',
+          memoryModalDesc: 'Preferenze persistenti, regole operative apprese e grafo di competenze del team',
+          memoryPrefsTab: '🌟 Preferenze Utente',
+          memoryRulesTab: '📜 Regole Operative',
+          memorySkillsTab: '🕸️ Grafo Skill & Tool',
+          memoryLearnTab: '➕ Apprendi Regola',
+          memorySubmitBtn: '🧬 Apprendi & Registra',
+          memoryCloseBtn: 'Chiudi',
           inputPh: "Assegna un'istruzione a questo agente...",
           sendBtn: 'Invia Task',
           walkLog: (to, msg) => `🚶‍♂️ Cammina verso ${to} per assegnare: "${msg}"`,
@@ -1204,6 +1333,16 @@
           tunnelQrBtn: '📱 QR Code & Link',
           tunnelOpenBrowserBtn: '🌐 Open in Browser',
           tunnelCloseBtn: 'Close',
+          chipMemory: '🧬 Memory & Skills',
+          memoryBtn: 'Memory & Skills',
+          memoryModalTitle: '🧬 Enterprise Memory & Skill Graph — Auto-Evolving Brain',
+          memoryModalDesc: 'Persistent preferences, learned operational rules, and agent skill & tool graph',
+          memoryPrefsTab: '🌟 User Preferences',
+          memoryRulesTab: '📜 Operational Rules',
+          memorySkillsTab: '🕸️ Skill & Tool Graph',
+          memoryLearnTab: '➕ Learn Rule',
+          memorySubmitBtn: '🧬 Learn & Register',
+          memoryCloseBtn: 'Close',
           inputPh: 'Assign a task or instruction to this agent...',
           sendBtn: 'Send Task',
           walkLog: (to, msg) => `🚶‍♂️ Walking to ${to} to deliver: "${msg}"`,
@@ -1234,6 +1373,8 @@
         const c8 = document.getElementById('chip-report'); if (c8) c8.textContent = t.chipReport;
         const cGitPush = document.getElementById('chip-git-push'); if (cGitPush) cGitPush.textContent = t.chipGitPush;
         const cWar = document.getElementById('chip-war-room'); if (cWar) cWar.textContent = t.chipWarRoom;
+        const cMem = document.getElementById('chip-memory'); if (cMem) cMem.textContent = t.chipMemory;
+        const lMemBtn = document.getElementById('label-memory-btn'); if (lMemBtn) lMemBtn.textContent = t.memoryBtn;
         if (document.body.classList.contains('war-room-active') && lb) {
           lb.textContent = t.warRoomBadge;
         }
@@ -1258,6 +1399,10 @@
         const tunModalClose = document.getElementById('modal-tunnel-close-btn'); if (tunModalClose) tunModalClose.textContent = t.tunnelCloseBtn;
         const tunDrawerModalBtn = document.getElementById('btn-drawer-tunnel-modal'); if (tunDrawerModalBtn) tunDrawerModalBtn.textContent = t.tunnelQrBtn;
         const tunDrawerCopyBtn = document.getElementById('btn-drawer-tunnel-copy'); if (tunDrawerCopyBtn) tunDrawerCopyBtn.textContent = t.tunnelCopyBtn;
+        const memModTit = document.getElementById('memory-modal-title'); if (memModTit) memModTit.textContent = t.memoryModalTitle;
+        const memModDesc = document.getElementById('memory-modal-desc'); if (memModDesc) memModDesc.textContent = t.memoryModalDesc;
+        const memSubmitBtn = document.getElementById('btn-memory-submit'); if (memSubmitBtn) memSubmitBtn.textContent = t.memorySubmitBtn;
+        const memCloseBtn = document.getElementById('modal-memory-close-btn'); if (memCloseBtn) memCloseBtn.textContent = t.memoryCloseBtn;
         const inp = document.getElementById('task-input'); if (inp) inp.placeholder = t.inputPh;
         const sBtn = document.getElementById('send-task-btn'); if (sBtn) sBtn.textContent = t.sendBtn;
         if (typeof updateTunnelUI === 'function') updateTunnelUI(currentTunnelState);
@@ -1920,6 +2065,11 @@
           // Idea 3: Allarme War Room / Red Team mode
           if (msg.type === 'warRoomAlert') {
             handleWarRoomAlert(msg);
+          }
+
+          // Idea 5: Memoria & Skill Graph sincronizzata dal server
+          if (msg.type === 'memoryUpdated' || msg.type === 'memoryLoaded' || msg.type === 'factLearned' || msg.type === 'toolApproved') {
+            if (typeof fetchMemoryData === 'function') fetchMemoryData();
           }
         } catch (err) {
           console.error('[Webview] Errore ws message:', err);
