@@ -11,6 +11,10 @@ bin/
 *.jsonl
 tasks_queue.json
 .last_announced_mode
+.tmp/
+uploads/
+media/
+temp/
 discord.config.json
 agents.config.json
 .pixel-agents/

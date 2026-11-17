@@ -42,7 +42,7 @@ const warRoom = require('./war-room');
 const tunnelManager = require('./tunnel-manager');
 const memoryEngine = require('./memory-engine');
 const { resolveLanguageServer } = require('./antigravity-path');
-const { initDiscordBot, broadcastToDiscord, sendDiscordPermissionPrompt, sendFinalAgentResponse, updateDiscordUsageMonitor, sendDiscordAnnouncement } = require('./discord-bot');
+const { initDiscordBot, broadcastToDiscord, sendDiscordPermissionPrompt, sendFinalAgentResponse, updateDiscordUsageMonitor, sendDiscordAnnouncement, sendDiscordImage, transcribeAudioWithGemini } = require('./discord-bot');
 
 const app = express();
 const server = http.createServer(app);
@@ -1837,6 +1837,35 @@ app.post('/api/memory/tool/execute', async (req, res) => {
     return res.status(400).json(result);
   }
   res.json(result);
+});
+
+// ====================================================================
+// ENDPOINTS DISCORD MULTIMODALE & SPEECH-TO-TEXT GEMINI FLASH
+// ====================================================================
+app.post('/api/discord/send-image', async (req, res) => {
+  const { agentId, filePath, caption } = req.body || {};
+  const result = await sendDiscordImage(agentId || 10, filePath, caption);
+  if (!result.ok) {
+    return res.status(400).json(result);
+  }
+  res.json(result);
+});
+
+app.post('/api/speech/transcribe', async (req, res) => {
+  const { audioBase64, mimeType } = req.body || {};
+  if (!audioBase64 || typeof audioBase64 !== 'string') {
+    return res.status(400).json({ ok: false, error: 'Parametro audioBase64 mancante o non valido' });
+  }
+  try {
+    const buffer = Buffer.from(audioBase64, 'base64');
+    const result = await transcribeAudioWithGemini(buffer, mimeType || 'audio/ogg');
+    if (!result.ok) {
+      return res.status(400).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // Monitor log transcript da Antigravity per live streaming e animazioni

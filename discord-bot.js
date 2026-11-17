@@ -1,5 +1,7 @@
-const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
 const http = require('http');
+const https = require('https');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -266,6 +268,292 @@ async function applyChannelModerationPermissions(guild) {
     console.warn('[Discord Bot] applyChannelModerationPermissions fallita:', err.message);
     return { ok: false, error: err.message };
   }
+}
+
+// ====================================================================
+// MULTIMODALITÀ & VOICE STT GEMINI FLASH (CHECKLIST CARLO & ALBERTO CEO)
+// ====================================================================
+const ALLOWED_IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
+const ALLOWED_IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+const ALLOWED_AUDIO_EXTS = ['.ogg', '.mp3', '.wav', '.m4a'];
+const ALLOWED_AUDIO_MIMES = ['audio/ogg', 'audio/mpeg', 'audio/wav', 'audio/wave', 'audio/x-wav', 'audio/mp4', 'audio/x-m4a'];
+const OUTBOUND_BLACKLIST_RE = /(\.env|\.config\.json|tasks_queue\.json|\.git|\.vbs|\.sh|\.bat|node_modules)/i;
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10 MB (Checklist Carlo)
+
+const uploadRateLimits = new Map(); // userId -> [timestamps]
+
+function checkUploadRateLimit(userId) {
+  const now = Date.now();
+  const windowMs = 30000; // 30s
+  const maxAttempts = 3;   // max 3 tentativi (Checklist Carlo)
+  let timestamps = uploadRateLimits.get(userId) || [];
+  timestamps = timestamps.filter(t => now - t < windowMs);
+  if (timestamps.length >= maxAttempts) {
+    uploadRateLimits.set(userId, timestamps);
+    return false;
+  }
+  timestamps.push(now);
+  uploadRateLimits.set(userId, timestamps);
+  return true;
+}
+
+function validateImageMagicBytes(buffer) {
+  if (!buffer || buffer.length < 12) return false;
+  // PNG: 89 50 4E 47 (\x89PNG)
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+    return 'png';
+  }
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+    return 'jpeg';
+  }
+  // GIF: 47 49 46 38 (GIF8)
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) {
+    return 'gif';
+  }
+  // WEBP: RIFF (byte 0-3) ... WEBP (byte 8-11)
+  if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) {
+    return 'webp';
+  }
+  // ⛔ Esclude tassativamente SVG, ICO o eseguibili mascherati
+  return false;
+}
+
+function validateOutboundImagePath(rawPath) {
+  if (!rawPath || typeof rawPath !== 'string') return { ok: false, error: 'Percorso file non valido' };
+  let clean = rawPath.trim().replace(/^file:\/\/\/?/i, '');
+  if (process.platform === 'win32' && clean.startsWith('/') && clean.length > 2 && clean[2] === ':') {
+    clean = clean.slice(1);
+  }
+  const resolved = path.resolve(clean);
+  if (!fs.existsSync(resolved)) {
+    return { ok: false, error: `File immagine non trovato sul disco: ${resolved}` };
+  }
+  const stat = fs.statSync(resolved);
+  if (!stat.isFile()) {
+    return { ok: false, error: `Il percorso non corrisponde a un file: ${resolved}` };
+  }
+  if (stat.size > MAX_UPLOAD_SIZE) {
+    return { ok: false, error: `Dimensione immagine supera il limite massimo consentito di 10MB (${(stat.size / (1024 * 1024)).toFixed(1)}MB)` };
+  }
+  const ext = path.extname(resolved).toLowerCase();
+  if (!ALLOWED_IMAGE_EXTS.includes(ext)) {
+    return { ok: false, error: `Estensione file non consentita: ${ext} (ammessi: png, jpg, jpeg, webp, gif)` };
+  }
+  if (OUTBOUND_BLACKLIST_RE.test(resolved)) {
+    return { ok: false, error: 'Accesso a file protetti o di configurazione aziendale vietato' };
+  }
+  return { ok: true, path: resolved, filename: path.basename(resolved) };
+}
+
+function getGeminiApiKey() {
+  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim()) return process.env.GEMINI_API_KEY.trim();
+  if (process.env.GOOGLE_API_KEY && process.env.GOOGLE_API_KEY.trim()) return process.env.GOOGLE_API_KEY.trim();
+  try {
+    const cfgPath = path.join(__dirname, 'discord.config.json');
+    if (fs.existsSync(cfgPath)) {
+      const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+      if (cfg.geminiApiKey && String(cfg.geminiApiKey).trim()) return String(cfg.geminiApiKey).trim();
+      if (cfg.googleApiKey && String(cfg.googleApiKey).trim()) return String(cfg.googleApiKey).trim();
+    }
+  } catch {}
+  return null;
+}
+
+async function downloadAttachment(url, targetPath, maxSize = MAX_UPLOAD_SIZE) {
+  return new Promise((resolve, reject) => {
+    const parentDir = path.dirname(targetPath);
+    if (!fs.existsSync(parentDir)) fs.mkdirSync(parentDir, { recursive: true });
+
+    const fileStream = fs.createWriteStream(targetPath);
+    let downloadedBytes = 0;
+
+    const req = https.get(url, { timeout: 10000 }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        fileStream.close();
+        try { fs.unlinkSync(targetPath); } catch {}
+        return downloadAttachment(res.headers.location, targetPath, maxSize).then(resolve).catch(reject);
+      }
+
+      if (res.statusCode !== 200) {
+        fileStream.close();
+        try { fs.unlinkSync(targetPath); } catch {}
+        return reject(new Error(`Download fallito con status HTTP ${res.statusCode}`));
+      }
+
+      const contentLength = parseInt(res.headers['content-length'] || '0', 10);
+      if (contentLength > maxSize) {
+        req.destroy();
+        fileStream.close();
+        try { fs.unlinkSync(targetPath); } catch {}
+        return reject(new Error(`Dimensione file supera il limite massimo di ${maxSize / (1024 * 1024)}MB`));
+      }
+
+      res.on('data', chunk => {
+        downloadedBytes += chunk.length;
+        if (downloadedBytes > maxSize) {
+          req.destroy();
+          fileStream.close();
+          try { fs.unlinkSync(targetPath); } catch {}
+          return reject(new Error(`Dimensione file supera il limite massimo di ${maxSize / (1024 * 1024)}MB`));
+        }
+      });
+
+      res.pipe(fileStream);
+
+      fileStream.on('finish', () => {
+        fileStream.close(() => resolve({ path: targetPath, size: downloadedBytes }));
+      });
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      fileStream.close();
+      try { fs.unlinkSync(targetPath); } catch {}
+      reject(new Error('Timeout durante il download dell\'allegato (10s)'));
+    });
+
+    req.on('error', err => {
+      fileStream.close();
+      try { fs.unlinkSync(targetPath); } catch {}
+      reject(err);
+    });
+  });
+}
+
+async function transcribeAudioWithGemini(audioBuffer, mimeType = 'audio/ogg') {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) {
+    return {
+      ok: false,
+      error: 'Chiave GEMINI_API_KEY non configurata. Imposta "geminiApiKey" in discord.config.json o la variabile d\'ambiente GEMINI_API_KEY.'
+    };
+  }
+
+  const base64Audio = audioBuffer.toString('base64');
+  const payload = JSON.stringify({
+    contents: [
+      {
+        parts: [
+          {
+            inlineData: {
+              mimeType: mimeType || 'audio/ogg',
+              data: base64Audio
+            }
+          },
+          {
+            text: 'Trascrivi fedelmente e integralmente questo messaggio vocale in italiano. Restituisci SOLO ed esclusivamente la trascrizione testuale, senza aggiungere commenti, punteggiature fittizie o preamboli.'
+          }
+        ]
+      }
+    ],
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 1024
+    }
+  });
+
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+  let lastErr = null;
+
+  for (const model of models) {
+    try {
+      const transcription = await new Promise((resolve, reject) => {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const req = https.request(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload)
+          },
+          timeout: 20000 // 20s timeout da checklist Carlo
+        }, (res) => {
+          let data = '';
+          res.on('data', chunk => { data += chunk; });
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              try {
+                const json = JSON.parse(data);
+                const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                if (text) {
+                  resolve(text);
+                } else {
+                  reject(new Error('Nessun testo estratto dalla risposta del modello'));
+                }
+              } catch (e) {
+                reject(e);
+              }
+            } else {
+              reject(new Error(`Gemini API HTTP ${res.statusCode}: ${data.slice(0, 200)}`));
+            }
+          });
+        });
+
+        req.on('error', reject);
+        req.on('timeout', () => {
+          req.destroy();
+          reject(new Error('Timeout durante la trascrizione con Gemini Flash (20s)'));
+        });
+
+        req.write(payload);
+        req.end();
+      });
+
+      return { ok: true, text: transcription, modelUsed: model };
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+
+  return { ok: false, error: lastErr ? lastErr.message : 'Trascrizione vocale non riuscita' };
+}
+
+async function sendDiscordImage(agentIdOrChannelName, imagePath, caption = '') {
+  if (!client || !client.isReady()) {
+    return { ok: false, error: 'Client Discord non connesso o non pronto' };
+  }
+  const valid = validateOutboundImagePath(imagePath);
+  if (!valid.ok) {
+    return valid;
+  }
+
+  let channelKey = null;
+  const numId = Number(agentIdOrChannelName);
+  if (!isNaN(numId)) {
+    const entry = Object.entries(SUBAGENT_CHANNELS).find(([, a]) => a.id === numId);
+    if (entry) channelKey = entry[0];
+  } else {
+    channelKey = String(agentIdOrChannelName || '').toLowerCase().trim();
+  }
+
+  const agentEntry = SUBAGENT_CHANNELS[channelKey] || Object.values(SUBAGENT_CHANNELS)[0];
+  const attachment = new AttachmentBuilder(valid.path, { name: valid.filename });
+
+  let sentCount = 0;
+  for (const guild of client.guilds.cache.values()) {
+    const channel = guild.channels.cache.find(c =>
+      c.isTextBased() && c.name && (c.name === agentEntry.channelName || c.name.toLowerCase().includes(agentEntry.channelKeyword.toLowerCase()))
+    );
+    if (channel) {
+      try {
+        const embed = new EmbedBuilder()
+          .setTitle(`🖼️ Output Visivo da ${agentEntry.name}`)
+          .setDescription(caption ? caption.slice(0, 2000) : `Allegato: \`${valid.filename}\``)
+          .setColor(agentEntry.color)
+          .setImage(`attachment://${valid.filename}`)
+          .setFooter({ text: 'AziendaAI • Output Multimodale' })
+          .setTimestamp();
+
+        await channel.send({ embeds: [embed], files: [attachment] });
+        sentCount++;
+      } catch (err) {
+        console.warn(`[Discord Bot] Errore invio immagine in #${channel.name}:`, err.message);
+      }
+    }
+  }
+
+  return { ok: sentCount > 0, sentCount, filename: valid.filename };
 }
 
 let client = null;
@@ -659,11 +947,112 @@ function initDiscordBot(onBroadcast) {
       }
     }
 
+    let finalPrompt = content;
+
+    // GESTIONE ALLEGATI MULTIMODALI (FOTO & NOTE VOCALI)
+    if (message.attachments && message.attachments.size > 0) {
+      if (!target) {
+        target = SUBAGENT_CHANNELS['alberto-ceo']; // Default a CEO se allegato inviato in canale generale
+      }
+
+      // Rate limit anti-DoS (max 3 ogni 30s)
+      if (!checkUploadRateLimit(message.author.id)) {
+        await message.reply('⏳ **Rate limit superato:** Massimo 3 upload o note vocali ogni 30 secondi. Riprova tra poco.').catch(() => {});
+        return;
+      }
+
+      for (const attachment of message.attachments.values()) {
+        const mime = (attachment.contentType || '').toLowerCase();
+        const ext = path.extname(attachment.name || '').toLowerCase();
+        const isVoice = (message.flags && typeof message.flags.has === 'function' && message.flags.has(1 << 13)) || attachment.name?.includes('voice-message');
+        const isAudio = isVoice || mime.startsWith('audio/') || ALLOWED_AUDIO_EXTS.includes(ext);
+        const isImage = mime.startsWith('image/') || ALLOWED_IMAGE_EXTS.includes(ext);
+
+        // 1. GESTIONE VOCALE CON TRASCRIZIONE GEMINI FLASH
+        if (isAudio) {
+          if (attachment.size > MAX_UPLOAD_SIZE) {
+            await message.reply('⚠️ **File audio troppo grande:** Il limite massimo consentito è 10MB.').catch(() => {});
+            return;
+          }
+          if (!ALLOWED_AUDIO_EXTS.includes(ext) && !ALLOWED_AUDIO_MIMES.some(m => mime.startsWith(m)) && !isVoice) {
+            await message.reply(`⚠️ **Formato audio non consentito:** \`${ext || mime}\`. Formati supportati: \`.ogg\`, \`.mp3\`, \`.wav\`, \`.m4a\`.`).catch(() => {});
+            return;
+          }
+
+          const tempDir = path.join(__dirname, '.tmp', 'audio');
+          if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+          const tempAudioPath = path.join(tempDir, `voice_${Date.now()}_${crypto.randomBytes(6).toString('hex')}${ext || '.ogg'}`);
+
+          try {
+            await message.channel.sendTyping().catch(() => {});
+            await downloadAttachment(attachment.url, tempAudioPath, MAX_UPLOAD_SIZE);
+            const audioBuf = fs.readFileSync(tempAudioPath);
+
+            const sttRes = await transcribeAudioWithGemini(audioBuf, mime || 'audio/ogg');
+            if (sttRes.ok && sttRes.text) {
+              const transcribedText = sttRes.text.trim();
+              await message.reply(`🎙️ **Trascrizione vocale (Gemini Flash):**\n> "*${transcribedText}*"`).catch(() => {});
+              finalPrompt = `[Nota Vocale Discord da @${message.author.username}]: "${transcribedText}"${finalPrompt ? `\nTesto allegato: ${finalPrompt}` : ''}`;
+            } else {
+              await message.reply(`⚠️ **Impossibile trascrivere il vocale:** ${sttRes.error}`).catch(() => {});
+              return;
+            }
+          } catch (sttErr) {
+            console.warn('[Discord Bot] Errore STT:', sttErr.message);
+            await message.reply(`❌ **Errore trascrizione vocale:** ${sttErr.message}`).catch(() => {});
+            return;
+          } finally {
+            try { if (fs.existsSync(tempAudioPath)) fs.unlinkSync(tempAudioPath); } catch {}
+          }
+          break;
+        }
+
+        // 2. GESTIONE FOTO INBOUND
+        else if (isImage) {
+          if (attachment.size > MAX_UPLOAD_SIZE) {
+            await message.reply('⚠️ **Immagine troppo grande:** Il limite massimo consentito è 10MB.').catch(() => {});
+            return;
+          }
+          if (!ALLOWED_IMAGE_EXTS.includes(ext) || !ALLOWED_IMAGE_MIMES.includes(mime)) {
+            await message.reply(`⛔ **Formato immagine non consentito:** \`${ext || mime}\`. Formati ammessi: \`.png\`, \`.jpg\`, \`.jpeg\`, \`.webp\`, \`.gif\` (SVG escluso per sicurezza).`).catch(() => {});
+            return;
+          }
+
+          const uploadsDir = path.join(__dirname, 'uploads', 'inbound_images');
+          if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+          const safeName = path.basename(attachment.name || 'image.png').replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+          const savedPath = path.join(uploadsDir, `${Date.now()}_${safeName}`);
+
+          try {
+            await downloadAttachment(attachment.url, savedPath, MAX_UPLOAD_SIZE);
+            const imgBuf = fs.readFileSync(savedPath);
+            const detected = validateImageMagicBytes(imgBuf);
+
+            if (!detected) {
+              try { fs.unlinkSync(savedPath); } catch {}
+              await message.reply('⛔ **Validazione Magic Bytes fallita:** Il file inviato non è un\'immagine valida (PNG, JPEG, WEBP, GIF). Scartato per sicurezza.').catch(() => {});
+              return;
+            }
+
+            const normalizedPath = `file:///${savedPath.replace(/\\/g, '/')}`;
+            finalPrompt = `[Foto allegata: ${normalizedPath}] ${finalPrompt || "Analizza l'immagine allegata."}`;
+            await message.reply(`🖼️ **Immagine ricevuta e validata (${detected.toUpperCase()}):** \`${safeName}\``).catch(() => {});
+          } catch (imgErr) {
+            console.warn('[Discord Bot] Errore salvataggio immagine:', imgErr.message);
+            try { if (fs.existsSync(savedPath)) fs.unlinkSync(savedPath); } catch {}
+            await message.reply(`❌ **Errore download immagine:** ${imgErr.message}`).catch(() => {});
+            return;
+          }
+        }
+      }
+    }
+
     if (!target) return;
+    if (!finalPrompt || !finalPrompt.trim()) return;
 
     // Tutti a riposo: mette il task in coda per eseguirlo automaticamente al risveglio
     if (routing.isResting()) {
-      const qPos = routing.enqueueRestTask({ agentId: target.id, text: content, source: `Discord (${message.author.username})` });
+      const qPos = routing.enqueueRestTask({ agentId: target.id, text: finalPrompt, source: `Discord (${message.author.username})` });
       message.channel.send(`💤 ${routing.restMessage()}\n📥 **Task messo in coda (#${qPos})**: verrà inviato automaticamente a **${target.name}** appena la quota si ricarica!`).catch(() => {});
       return;
     }
@@ -673,7 +1062,7 @@ function initDiscordBot(onBroadcast) {
       await message.react('⚡');
     } catch {}
 
-    dispatchTaskToSubagent(target.id, target.name, content, message.author.username, (err) => {
+    dispatchTaskToSubagent(target.id, target.name, finalPrompt, message.author.username, (err) => {
       if (err) {
         message.channel.send(`❌ Errore recapito a ${target.name}: ${err.message}`).catch(() => {});
       } else {
@@ -953,11 +1342,28 @@ function sendFinalAgentResponse(agentId, text) {
     .setFooter({ text: 'AziendaAI • Lavoro completato' })
     .setTimestamp();
 
+  // Outbound image detection: controlla se la risposta dell'agente contiene riferimenti a immagini locali
+  const imgMatch = /!\[.*?\]\((file:\/\/\/[^)]+|\S+?\.(?:png|jpg|jpeg|webp|gif))\)/i.exec(cleanText) ||
+                   /(?:^|\s)(file:\/\/\/\S+?\.(?:png|jpg|jpeg|webp|gif)|[a-zA-Z]:[\\/][^\s"]+?\.(?:png|jpg|jpeg|webp|gif))/i.exec(cleanText);
+
+  let attachment = null;
+  if (imgMatch) {
+    const candidatePath = imgMatch[1];
+    const valid = validateOutboundImagePath(candidatePath);
+    if (valid.ok) {
+      attachment = new AttachmentBuilder(valid.path, { name: valid.filename });
+      embed.setImage(`attachment://${valid.filename}`);
+    }
+  }
+
   client.guilds.cache.forEach(guild => {
     // Trova ESATTAMENTE il canale testuale dedicato all'agente (senza inviare a canali duplicati o non pertinenti)
     const channel = guild.channels.cache.find(c => c.isTextBased() && c.name.toLowerCase().includes(agentEntry.channelKeyword.toLowerCase()));
     if (channel) {
-      channel.send({ embeds: [embed] }).catch(err => {
+      channel.send({
+        embeds: [embed],
+        files: attachment ? [attachment] : []
+      }).catch(err => {
         console.warn(`[Discord Bot] Errore invio risposta su #${channel.name}:`, err.message);
       });
     }
@@ -1151,5 +1557,13 @@ module.exports = {
   applyChannelModerationPermissions,
   AUTHORIZED_USERS,
   RESTRICTED_ROLES,
+  validateImageMagicBytes,
+  validateOutboundImagePath,
+  checkUploadRateLimit,
+  transcribeAudioWithGemini,
+  sendDiscordImage,
+  MAX_UPLOAD_SIZE,
+  ALLOWED_IMAGE_EXTS,
+  ALLOWED_AUDIO_EXTS,
   getClient: () => client
 };
