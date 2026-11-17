@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const { spawn, execFile, execSync } = require('child_process');
+const WebSocket = require('ws');
 const routing = require('./routing');
 
 const BIN_PATH = path.join(__dirname, 'bin', process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared');
@@ -73,7 +74,57 @@ function serveFile(filePath, res) {
   stream.pipe(res);
 }
 
-function createPreviewServer(dirPath) {
+// ====================================================================
+// REVERSE PROXY API & WEBSOCKET PER TUNNEL PUBBLICO (CHECKLIST CARLO)
+// ====================================================================
+const TUNNEL_SAFE_API_WHITELIST = new Set([
+  '/api/quota',
+  '/api/memory/neural-graph',
+  '/api/memory',
+  '/api/memory/skills',
+  '/api/tasks/queue',
+  '/api/project',
+  '/api/digest/status',
+  '/api/war-room/status',
+  '/api/tunnel/status',
+  '/api/tunnel',
+  '/api/ceo-report'
+]);
+
+function isAllowedTunnelApi(pathname, method) {
+  if (method !== 'GET') return false; // Solo GET ammessi (Carlo Checklist)
+  const cleanPath = String(pathname || '').replace(/\/+$/, '');
+  return TUNNEL_SAFE_API_WHITELIST.has(cleanPath);
+}
+
+function proxyHttpRequest(req, res, targetPort = 3000) {
+  const options = {
+    hostname: '127.0.0.1',
+    port: targetPort,
+    path: req.url,
+    method: req.method,
+    headers: {
+      ...req.headers,
+      host: `127.0.0.1:${targetPort}`,
+      'x-forwarded-for': req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+      'x-forwarded-proto': 'https'
+    }
+  };
+
+  const proxyReq = http.request(options, (proxyRes) => {
+    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+    proxyRes.pipe(res);
+  });
+
+  proxyReq.on('error', (err) => {
+    res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ ok: false, error: '502 Bad Gateway: Backend AziendaAI su porta 3000 non raggiungibile.' }));
+  });
+
+  req.pipe(proxyReq);
+}
+
+function createPreviewServer(dirPath = routing.getTargetProject()) {
   return http.createServer((req, res) => {
     try {
       const parsedUrl = new URL(req.url, `http://${req.headers.host || '127.0.0.1'}`);
@@ -84,7 +135,34 @@ function createPreviewServer(dirPath) {
         return res.end('Bad Request');
       }
 
-      // Blacklist check su tutti i segmenti del percorso
+      // ====================================================================
+      // REVERSE PROXY API CON WHITELIST PERITALE CARLO (SOLO GET SAFE)
+      // ====================================================================
+      if (reqPath === '/api' || reqPath.startsWith('/api/')) {
+        // 1. Rigido Metodo GET: qualsiasi richiesta mutante (POST, PUT, DELETE, PATCH) è respinta con 403
+        if (req.method !== 'GET') {
+          res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
+          return res.end(JSON.stringify({
+            ok: false,
+            error: '403 Forbidden: Mutating API disabled on public preview tunnel'
+          }));
+        }
+
+        // 2. Whitelist Tassativa Endpoint Consentiti (Sola Lettura)
+        const cleanPath = reqPath.replace(/\/+$/, '');
+        if (!isAllowedTunnelApi(cleanPath, req.method)) {
+          res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
+          return res.end(JSON.stringify({
+            ok: false,
+            error: `403 Forbidden: Endpoint '${cleanPath}' non consentito su tunnel pubblico`
+          }));
+        }
+
+        // 3. Proxy trasparente verso il server principale su porta 3000
+        return proxyHttpRequest(req, res, 3000);
+      }
+
+      // Blacklist check su tutti i segmenti del percorso file statico
       const segments = reqPath.split(/[\\/]/).filter(Boolean);
       for (const seg of segments) {
         if (BLACKLIST_RE.test(seg)) {
@@ -104,10 +182,15 @@ function createPreviewServer(dirPath) {
       }
 
       if (!fs.existsSync(safePath)) {
-        // Fallback: cerca dentro public/ se presente
+        // Fallback 1: cerca dentro public/ del target
         const publicFallback = path.join(dirPath, 'public', '.' + reqPath);
         if (fs.existsSync(publicFallback) && !fs.statSync(publicFallback).isDirectory()) {
           return serveFile(publicFallback, res);
+        }
+        // Fallback 2: cerca dentro la root public/ di AziendaAI
+        const rootPublicFallback = path.join(__dirname, 'public', '.' + reqPath);
+        if (fs.existsSync(rootPublicFallback) && !fs.statSync(rootPublicFallback).isDirectory()) {
+          return serveFile(rootPublicFallback, res);
         }
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         return res.end('Not Found');
@@ -131,14 +214,85 @@ function createPreviewServer(dirPath) {
   });
 }
 
-function startPreviewServer(dirPath, port = PREVIEW_PORT) {
+let tunnelWss = null;
+
+function closePreviewServer() {
+  if (tunnelWss) {
+    try { tunnelWss.close(); } catch {}
+    tunnelWss = null;
+  }
   if (previewServer) {
     try { previewServer.close(); } catch {}
+    previewServer = null;
   }
+}
+
+function startPreviewServer(dirPath, port = PREVIEW_PORT) {
+  closePreviewServer();
+
   return new Promise((resolve, reject) => {
     previewServer = createPreviewServer(dirPath);
+    tunnelWss = new WebSocket.Server({ noServer: true });
+
+    // Gestione WebSocket upgrade su porta 3001
+    previewServer.on('upgrade', (req, socket, head) => {
+      try {
+        const parsedUrl = new URL(req.url, `http://${req.headers.host || '127.0.0.1'}`);
+        if (parsedUrl.pathname === '/ws') {
+          tunnelWss.handleUpgrade(req, socket, head, (clientWs) => {
+            tunnelWss.emit('connection', clientWs, req);
+          });
+        } else {
+          socket.destroy();
+        }
+      } catch (err) {
+        socket.destroy();
+      }
+    });
+
+    // Connessione WebSocket e Proxy Filtrato (Carlo Checklist 2)
+    tunnelWss.on('connection', (clientWs, req) => {
+      const backendWs = new WebSocket('ws://127.0.0.1:3000/ws');
+
+      // Server (3000) -> Client (Mobile): Tutti gli eventi visuali live fluiscono liberamente
+      backendWs.on('message', (data, isBinary) => {
+        if (clientWs.readyState === WebSocket.OPEN) {
+          clientWs.send(data, { binary: isBinary });
+        }
+      });
+
+      // Client (Mobile) -> Server (3000): FILTRO PERITALE ANTI-RCE (SOLO LETTURA / BENIGNI)
+      clientWs.on('message', (data) => {
+        try {
+          const msg = JSON.parse(data.toString());
+          // Whitelist Carlo: consentiti solo eventi informativi di UI innocui
+          if (msg && (msg.type === 'focusAgent' || msg.type === 'webviewReady')) {
+            if (backendWs.readyState === WebSocket.OPEN) {
+              backendWs.send(JSON.stringify(msg));
+            }
+          } else {
+            console.warn(`[Tunnel Security] Bloccato frame mutante da tunnel pubblico: ${msg?.type || 'unknown'}`);
+          }
+        } catch {}
+      });
+
+      backendWs.on('close', () => {
+        if (clientWs.readyState === WebSocket.OPEN) clientWs.close();
+      });
+      clientWs.on('close', () => {
+        if (backendWs.readyState === WebSocket.OPEN) backendWs.close();
+      });
+
+      backendWs.on('error', () => {
+        try { clientWs.close(1011, 'Backend connection error'); } catch {}
+      });
+      clientWs.on('error', () => {
+        try { backendWs.close(); } catch {}
+      });
+    });
+
     previewServer.listen(port, '127.0.0.1', () => {
-      console.log(`🔒 [Tunnel Preview Server] Isolato su http://127.0.0.1:${port} per directory: ${dirPath}`);
+      console.log(`🔒 [Tunnel Preview Server] Isolato su http://127.0.0.1:${port} con API Proxy & WebSocket sicuro per: ${dirPath}`);
       resolve(previewServer);
     });
     previewServer.on('error', reject);
@@ -226,7 +380,7 @@ function startTunnel({ targetDir = null, port = PREVIEW_PORT, broadcastFn = null
         tunnelStatus = 'error';
         killProcessTreeSync(tunnelProcess);
         tunnelProcess = null;
-        if (previewServer) { try { previewServer.close(); } catch {} previewServer = null; }
+        closePreviewServer();
         resolve({ ok: false, error: lastError });
       }
     }, 25000);
@@ -241,7 +395,7 @@ function startTunnel({ targetDir = null, port = PREVIEW_PORT, broadcastFn = null
       startPromise = null;
       lastError = `Errore spawn cloudflared: ${spawnErr.message}`;
       tunnelStatus = 'error';
-      if (previewServer) { try { previewServer.close(); } catch {} previewServer = null; }
+      closePreviewServer();
       resolve({ ok: false, error: lastError });
       return;
     }
@@ -298,7 +452,7 @@ function startTunnel({ targetDir = null, port = PREVIEW_PORT, broadcastFn = null
         clearTimeout(timeoutHandle);
         startPromise = null;
         tunnelStatus = 'error';
-        if (previewServer) { try { previewServer.close(); } catch {} previewServer = null; }
+        closePreviewServer();
         resolve({ ok: false, error: err.message });
       }
     });
@@ -315,7 +469,7 @@ function startTunnel({ targetDir = null, port = PREVIEW_PORT, broadcastFn = null
       tunnelStatus = 'inactive';
       startedAt = null;
       startPromise = null;
-      if (previewServer) { try { previewServer.close(); } catch {} previewServer = null; }
+      closePreviewServer();
 
       if (!resolved) {
         resolved = true;
@@ -352,10 +506,7 @@ async function stopTunnel(broadcastFn = null, reason = 'user_request') {
     killProcessTreeSync(tunnelProcess);
     tunnelProcess = null;
   }
-  if (previewServer) {
-    try { previewServer.close(); } catch {}
-    previewServer = null;
-  }
+  closePreviewServer();
 
   publicUrl = null;
   tunnelStatus = 'inactive';
@@ -383,10 +534,7 @@ const cleanupAntiZombie = () => {
     killProcessTreeSync(tunnelProcess);
     tunnelProcess = null;
   }
-  if (previewServer) {
-    try { previewServer.close(); } catch {}
-    previewServer = null;
-  }
+  closePreviewServer();
 };
 process.on('exit', cleanupAntiZombie);
 process.on('SIGINT', cleanupAntiZombie);
@@ -399,5 +547,11 @@ module.exports = {
   getPublicUrl: () => publicUrl,
   isActive: () => tunnelStatus === 'active',
   PREVIEW_PORT,
-  BLACKLIST_RE
+  BLACKLIST_RE,
+  TUNNEL_SAFE_API_WHITELIST,
+  isAllowedTunnelApi,
+  createPreviewServer,
+  startPreviewServer,
+  proxyHttpRequest,
+  closePreviewServer
 };
