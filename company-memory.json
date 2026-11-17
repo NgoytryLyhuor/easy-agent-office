@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-11-17T00:33:19.472Z",
-  "updatedAt": "2026-11-17T00:53:44.415Z",
+  "updatedAt": "2026-11-17T01:10:17.866Z",
   "rules": [
     {
       "id": "rule-port-isolation",
@@ -41,7 +41,15 @@
       "key": "valid_rule-key:1.0",
       "value": "valore valido",
       "source": "test",
-      "timestamp": "2026-11-17T00:53:44.405Z"
+      "timestamp": "2026-11-17T01:07:33.718Z"
+    },
+    {
+      "id": "rules-1794877784511-619",
+      "category": "rules",
+      "key": "test-rule-sync",
+      "value": "Regola verificata durante collaudo automatico backend",
+      "source": "Luigi (Backend)",
+      "timestamp": "2026-11-17T01:10:17.726Z"
     }
   ],
   "preferences": [
@@ -82,9 +90,9 @@
       "description": "Mostra ultimo commit",
       "approved": true,
       "approvedBy": "Alberto (CEO)",
-      "approvedAt": "2026-11-17T00:53:44.415Z",
+      "approvedAt": "2026-11-17T01:07:33.728Z",
       "registeredBy": "Luigi (Backend)",
-      "registeredAt": "2026-11-17T00:53:44.412Z"
+      "registeredAt": "2026-11-17T01:07:33.725Z"
     }
   ],
   "skillGraph": {
@@ -228,6 +236,51 @@
         "from": "agent:6",
         "to": "tool:git-tail-log",
         "relation": "registered-tool"
+      }
+    ]
+  },
+  "dailyDigest": {
+    "enabled": false,
+    "time": "02:00",
+    "lastRun": "2026-11-17T01:10:17.861Z",
+    "history": [
+      {
+        "id": "digest-1794877817861",
+        "date": "2026-11-17",
+        "timestamp": "2026-11-17T01:10:17.861Z",
+        "source": "Test Suite",
+        "activeProject": "AziendaAI",
+        "metrics": {
+          "rulesLearned": 6,
+          "preferencesStored": 2,
+          "toolsActive": 1,
+          "feedbackLogged": 1
+        },
+        "highlights": [
+          "Memoria aziendale aggiornata: 6 regole operative e 2 preferenze",
+          "Custom tools verificati: 1/1 approvati per l'uso",
+          "Workspace attivo: AziendaAI"
+        ],
+        "summaryText": "🌙 Daily Digest [17/11/2026] — Workspace: AziendaAI | Regole: 6 | Preferenze: 2 | Tools: 1"
+      },
+      {
+        "id": "digest-1794877784648",
+        "date": "2026-11-17",
+        "timestamp": "2026-11-17T01:09:44.647Z",
+        "source": "Test Suite",
+        "activeProject": "AziendaAI",
+        "metrics": {
+          "rulesLearned": 6,
+          "preferencesStored": 2,
+          "toolsActive": 1,
+          "feedbackLogged": 1
+        },
+        "highlights": [
+          "Memoria aziendale aggiornata: 6 regole operative e 2 preferenze",
+          "Custom tools verificati: 1/1 approvati per l'uso",
+          "Workspace attivo: AziendaAI"
+        ],
+        "summaryText": "🌙 Daily Digest [17/11/2026] — Workspace: AziendaAI | Regole: 6 | Preferenze: 2 | Tools: 1"
       }
     ]
   }

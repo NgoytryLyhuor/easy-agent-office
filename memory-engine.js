@@ -28,8 +28,41 @@ const LEAK_PATTERNS = [
   /eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}/
 ];
 
+// Checklist Carlo: Redaction automatica dati sensibili e percorsi utente per GitHub pubblico
+const REDACT_SECRETS_RE = [
+  /(?:password|secret|token|api[_-]?key|passwd)\s*[:=]\s*['"]?[^\s'",;]{4,}['"]?/gi,
+  /[a-zA-Z0-9_\-\.]{15,}@[a-zA-Z0-9_\-\.]+\.[a-zA-Z]{2,}/g,
+  /ghp_[a-zA-Z0-9]{30,}/g,
+  /github_pat_[a-zA-Z0-9_]{40,}/g,
+  /AIza[0-9A-Za-z\-_]{35}/g,
+  /sk-[a-zA-Z0-9]{20,}/g,
+  /bearer\s+[a-zA-Z0-9_\-\.]{20,}/gi,
+  /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/gi,
+  /[a-zA-Z]:\\(?:Users|Utenti)\\[^\s\\\/]+/gi
+];
+
+function sanitizePublicText(str) {
+  if (str === null || str === undefined) return '';
+  let clean = String(str);
+  // Neutralizza percorsi locali dell'utente (es. C:\Users\Username -> ~)
+  clean = clean.replace(/[a-zA-Z]:\\(?:Users|Utenti)\\[^\s\\\/]+/gi, '~');
+  // Maschera UUID di sessione
+  clean = clean.replace(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/gi, '[SESSION_ID]');
+  for (const re of REDACT_SECRETS_RE) {
+    clean = clean.replace(re, '[REDACTED]');
+  }
+  return clean;
+}
+
 let broadcastCallback = null;
 let memoryState = null;
+let cachedNeuralGraph = null;
+let cachedNeuralGraphTime = 0;
+
+function invalidateNeuralCache() {
+  cachedNeuralGraph = null;
+  cachedNeuralGraphTime = 0;
+}
 
 // Verifica Anti-Prototype Pollution
 function isPolluted(input) {
@@ -96,6 +129,7 @@ function persistMemoryAtomic() {
       fs.copyFileSync(TMP_MEMORY_FILE, MEMORY_FILE);
       try { fs.unlinkSync(TMP_MEMORY_FILE); } catch (e) {}
     }
+    invalidateNeuralCache();
     return true;
   } catch (err) {
     console.error('[Memory Engine] Errore persistenza atomica memoria:', err.message);
@@ -151,7 +185,13 @@ function loadMemory() {
           patterns: Array.isArray(parsed.patterns) ? parsed.patterns : [],
           facts: Array.isArray(parsed.facts) ? parsed.facts : [],
           customTools: Array.isArray(parsed.customTools) ? parsed.customTools : [],
-          skillGraph: (parsed.skillGraph && Array.isArray(parsed.skillGraph.nodes)) ? parsed.skillGraph : buildInitialSkillGraph()
+          skillGraph: (parsed.skillGraph && Array.isArray(parsed.skillGraph.nodes)) ? parsed.skillGraph : buildInitialSkillGraph(),
+          dailyDigest: (parsed.dailyDigest && typeof parsed.dailyDigest === 'object') ? parsed.dailyDigest : {
+            enabled: false,
+            time: '02:00',
+            lastRun: null,
+            history: []
+          }
         };
         return;
       }
@@ -231,7 +271,13 @@ function loadMemory() {
     patterns: [],
     facts: [],
     customTools: [],
-    skillGraph: buildInitialSkillGraph()
+    skillGraph: buildInitialSkillGraph(),
+    dailyDigest: {
+      enabled: false,
+      time: '02:00',
+      lastRun: null,
+      history: []
+    }
   };
 
   persistMemoryAtomic();
@@ -542,10 +588,402 @@ function executeCustomTool(toolName, args = null, timeoutMs = 10000) {
   });
 }
 
+// ====================================================================
+// THE LIVING BRAIN 3D — MAPPA NEURALE 3D DELLA MEMORIA CONDIVISA
+// ====================================================================
+
+function hashStringToUnit(str, seed = 0) {
+  let h = seed ^ 0x12345678;
+  const s = String(str || '');
+  for (let i = 0; i < s.length; i++) {
+    h = Math.imul(h ^ s.charCodeAt(i), 2654435761);
+  }
+  return ((h >>> 0) % 1000000) / 1000000;
+}
+
+function getNeuralGraph() {
+  if (cachedNeuralGraph && (Date.now() - cachedNeuralGraphTime < 15000)) {
+    return cachedNeuralGraph;
+  }
+
+  if (!memoryState) loadMemory();
+
+  const nodes = [];
+  const synapses = [];
+
+  // 1. Agenti Centrali (Cluster Emissivi Fondamentali)
+  const agentDefs = [
+    { id: 'agent:10', label: 'Alberto (CEO)', role: 'CEO & Orchestrator', hemisphere: 'right', basePos: [55, 25, 20], color: '#58a6ff', emissive: '#79c0ff', size: 16, pulse: 1.5 },
+    { id: 'agent:6', label: 'Luigi (Backend)', role: 'Backend & Systems Engineer', hemisphere: 'left', basePos: [-55, 20, 15], color: '#2ea043', emissive: '#56d364', size: 15, pulse: 1.4 },
+    { id: 'agent:7', label: 'Gabri (Frontend)', role: 'Frontend Architect & UI Dev', hemisphere: 'right', basePos: [55, -20, 15], color: '#bc8cff', emissive: '#d2a8ff', size: 15, pulse: 1.3 },
+    { id: 'agent:8', label: 'Carlo (QA & Security)', role: 'Security Auditor & Code Revisor', hemisphere: 'left', basePos: [-55, -25, -15], color: '#d29922', emissive: '#e3b341', size: 15, pulse: 1.4 }
+  ];
+
+  agentDefs.forEach(a => {
+    nodes.push({
+      id: a.id,
+      label: sanitizePublicText(a.label),
+      type: 'agent',
+      role: sanitizePublicText(a.role),
+      hemisphere: a.hemisphere,
+      position: { x: a.basePos[0], y: a.basePos[1], z: a.basePos[2] },
+      size: a.size,
+      color: a.color,
+      emissive: a.emissive,
+      emissiveIntensity: 1.2,
+      pulseSpeed: a.pulse,
+      weight: 5.0,
+      activity: 0.95
+    });
+  });
+
+  // 2. Hub Centrale (Corpus Callosum / Brain Core)
+  const coreHubId = 'core:memory-engine';
+  nodes.push({
+    id: coreHubId,
+    label: 'Auto-Evolving Memory Hub',
+    type: 'core',
+    hemisphere: 'core',
+    position: { x: 0, y: 5, z: 30 },
+    size: 14,
+    color: '#f0f6fc',
+    emissive: '#388bfd',
+    emissiveIntensity: 1.5,
+    pulseSpeed: 1.6,
+    weight: 4.8,
+    activity: 0.98
+  });
+
+  // Sinapsi dal core verso tutti e 4 gli agenti
+  agentDefs.forEach(a => {
+    synapses.push({
+      id: `syn:${coreHubId}->${a.id}`,
+      source: coreHubId,
+      target: a.id,
+      type: 'structural',
+      synapticStrength: 0.95,
+      pulseSpeed: 1.5,
+      color: a.color,
+      pulsing: true
+    });
+  });
+
+  // 3. Competenze Fondamentali (Skills)
+  const skillNodes = (memoryState.skillGraph && Array.isArray(memoryState.skillGraph.nodes)) ? memoryState.skillGraph.nodes.filter(n => n.type === 'skill') : [];
+  skillNodes.forEach(s => {
+    const isLeft = ['backend', 'networking', 'security', 'qa'].some(cat => (s.category || '').toLowerCase().includes(cat) || s.id.includes('backend') || s.id.includes('tunnel') || s.id.includes('security') || s.id.includes('qa'));
+    const hemi = isLeft ? 'left' : (s.id.includes('memory') ? 'core' : 'right');
+    const u1 = hashStringToUnit(s.id, 11);
+    const u2 = hashStringToUnit(s.id, 23);
+    const u3 = hashStringToUnit(s.id, 37);
+
+    const x = hemi === 'core' ? (u1 - 0.5) * 20 : (hemi === 'left' ? -(35 + u1 * 40) : +(35 + u1 * 40));
+    const y = (u2 - 0.5) * 80;
+    const z = (u3 - 0.5) * 60;
+
+    nodes.push({
+      id: s.id,
+      label: sanitizePublicText(s.label || s.id),
+      type: 'skill',
+      category: sanitizePublicText(s.category || 'core'),
+      hemisphere: hemi,
+      position: { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)), z: Number(z.toFixed(2)) },
+      size: 11,
+      color: hemi === 'left' ? '#3fb950' : (hemi === 'right' ? '#d2a8ff' : '#58a6ff'),
+      emissive: hemi === 'left' ? '#56d364' : (hemi === 'right' ? '#e2c5ff' : '#79c0ff'),
+      emissiveIntensity: 0.9,
+      pulseSpeed: 1.2,
+      weight: 3.5,
+      activity: 0.85
+    });
+  });
+
+  // Archi skillGraph esistenti
+  const skillEdges = (memoryState.skillGraph && Array.isArray(memoryState.skillGraph.edges)) ? memoryState.skillGraph.edges : [];
+  skillEdges.forEach(e => {
+    synapses.push({
+      id: `syn:${e.from}->${e.to}`,
+      source: e.from,
+      target: e.to,
+      type: e.relation || 'active',
+      synapticStrength: 0.85,
+      pulseSpeed: 1.2,
+      color: '#58a6ff',
+      pulsing: true
+    });
+  });
+
+  // 4. Regole Operative (Emisfero Sinistro - Logica & Rigore)
+  const rules = memoryState.rules || [];
+  rules.forEach(r => {
+    const u1 = hashStringToUnit(r.key || r.id, 41);
+    const u2 = hashStringToUnit(r.key || r.id, 53);
+    const u3 = hashStringToUnit(r.key || r.id, 67);
+
+    const x = -(40 + u1 * 55);
+    const y = (u2 - 0.5) * 85;
+    const z = (u3 - 0.5) * 65;
+
+    const ruleNodeId = `rule:${r.key || r.id}`;
+    nodes.push({
+      id: ruleNodeId,
+      label: sanitizePublicText(r.key),
+      snippet: sanitizePublicText(String(r.value || '').slice(0, 100)),
+      type: 'rule',
+      category: 'operational-rule',
+      hemisphere: 'left',
+      position: { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)), z: Number(z.toFixed(2)) },
+      size: 8,
+      color: '#3fb950',
+      emissive: '#56d364',
+      emissiveIntensity: 0.8,
+      pulseSpeed: 1.0,
+      weight: 2.8,
+      activity: 0.75,
+      source: sanitizePublicText(r.source)
+    });
+
+    const targetAgent = (r.source && r.source.includes('Carlo')) ? 'agent:8' : 'agent:6';
+    synapses.push({
+      id: `syn:${targetAgent}->${ruleNodeId}`,
+      source: targetAgent,
+      target: ruleNodeId,
+      type: 'reinforced',
+      synapticStrength: 0.75,
+      pulseSpeed: 0.9,
+      color: '#3fb950',
+      pulsing: true
+    });
+  });
+
+  // 5. Preferenze Utente (Emisfero Destro - Stile, Visione & UI)
+  const preferences = memoryState.preferences || [];
+  preferences.forEach(p => {
+    const u1 = hashStringToUnit(p.key || p.id, 71);
+    const u2 = hashStringToUnit(p.key || p.id, 83);
+    const u3 = hashStringToUnit(p.key || p.id, 97);
+
+    const x = +(40 + u1 * 55);
+    const y = (u2 - 0.5) * 85;
+    const z = (u3 - 0.5) * 65;
+
+    const prefNodeId = `pref:${p.key || p.id}`;
+    nodes.push({
+      id: prefNodeId,
+      label: sanitizePublicText(p.key),
+      snippet: sanitizePublicText(String(p.value || '').slice(0, 100)),
+      type: 'preference',
+      category: 'user-preference',
+      hemisphere: 'right',
+      position: { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)), z: Number(z.toFixed(2)) },
+      size: 8,
+      color: '#d2a8ff',
+      emissive: '#e2c5ff',
+      emissiveIntensity: 0.8,
+      pulseSpeed: 1.0,
+      weight: 2.5,
+      activity: 0.7,
+      source: sanitizePublicText(p.source)
+    });
+
+    const targetAgent = (p.source && p.source.includes('Gabri')) ? 'agent:7' : 'agent:10';
+    synapses.push({
+      id: `syn:${targetAgent}->${prefNodeId}`,
+      source: targetAgent,
+      target: prefNodeId,
+      type: 'reinforced',
+      synapticStrength: 0.7,
+      pulseSpeed: 0.9,
+      color: '#d2a8ff',
+      pulsing: true
+    });
+  });
+
+  // 6. Custom Tools Dichiarativi (Lobo Frontale Sinistro)
+  const tools = memoryState.customTools || [];
+  tools.forEach(t => {
+    const u1 = hashStringToUnit(t.name, 101);
+    const u2 = hashStringToUnit(t.name, 113);
+    const u3 = hashStringToUnit(t.name, 127);
+
+    const x = -(45 + u1 * 35);
+    const y = 30 + (u2 - 0.5) * 35;
+    const z = (u3 - 0.5) * 45;
+
+    const toolNodeId = `tool:${t.name}`;
+    nodes.push({
+      id: toolNodeId,
+      label: sanitizePublicText(t.name),
+      snippet: sanitizePublicText(`${t.binary}: ${t.description}`),
+      type: 'tool',
+      category: 'custom-tool',
+      hemisphere: 'left',
+      approved: Boolean(t.approved),
+      position: { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)), z: Number(z.toFixed(2)) },
+      size: 9,
+      color: t.approved ? '#58a6ff' : '#8b949e',
+      emissive: t.approved ? '#79c0ff' : '#484f58',
+      emissiveIntensity: t.approved ? 1.0 : 0.4,
+      pulseSpeed: t.approved ? 1.3 : 0.4,
+      weight: 3.0,
+      activity: t.approved ? 0.8 : 0.2
+    });
+
+    synapses.push({
+      id: `syn:agent:6->${toolNodeId}`,
+      source: 'agent:6',
+      target: toolNodeId,
+      type: t.approved ? 'active' : 'inhibitory',
+      synapticStrength: t.approved ? 0.8 : 0.3,
+      pulseSpeed: t.approved ? 1.2 : 0.5,
+      color: t.approved ? '#58a6ff' : '#6e7681',
+      pulsing: Boolean(t.approved)
+    });
+  });
+
+  // Ottimizzazione WebGL: Tetto massimo 300 nodi (Checklist Carlo)
+  const boundedNodes = nodes.slice(0, 300);
+  const validNodeIds = new Set(boundedNodes.map(n => n.id));
+  const boundedSynapses = synapses.filter(s => validNodeIds.has(s.source) && validNodeIds.has(s.target));
+
+  const leftCount = boundedNodes.filter(n => n.hemisphere === 'left').length;
+  const rightCount = boundedNodes.filter(n => n.hemisphere === 'right').length;
+  const coreCount = boundedNodes.filter(n => n.hemisphere === 'core').length;
+  const density = boundedNodes.length > 0 ? Number((boundedSynapses.length / boundedNodes.length).toFixed(2)) : 0;
+
+  const result = {
+    ok: true,
+    model: 'The Living Brain 3D (Dual-Hemisphere Neural Topology)',
+    nodes: boundedNodes,
+    synapses: boundedSynapses,
+    totalNodes: boundedNodes.length,
+    totalSynapses: boundedSynapses.length,
+    hemispheres: {
+      left: leftCount,
+      right: rightCount,
+      core: coreCount
+    },
+    synapticDensity: density,
+    brainActivityIndex: 0.92,
+    cameraRecommendation: {
+      position: { x: 0, y: 25, z: 220 },
+      lookAt: { x: 0, y: 0, z: 10 },
+      fov: 45
+    },
+    updatedAt: memoryState.updatedAt || new Date().toISOString()
+  };
+
+  cachedNeuralGraph = result;
+  cachedNeuralGraphTime = Date.now();
+  return result;
+}
+
+// ====================================================================
+// DAILY DIGEST NOTTURNO CONFIGURABILE (ZERO QUOTA/CPU SE DISATTIVATO)
+// ====================================================================
+
+function getDigestStatus() {
+  if (!memoryState) loadMemory();
+  const digest = memoryState.dailyDigest || { enabled: false, time: '02:00', lastRun: null, history: [] };
+  return {
+    ok: true,
+    enabled: Boolean(digest.enabled),
+    time: digest.time || '02:00',
+    lastRun: digest.lastRun || null,
+    historyCount: Array.isArray(digest.history) ? digest.history.length : 0,
+    quotePreservationActive: !digest.enabled
+  };
+}
+
+function toggleDigest(enabled = null) {
+  if (!memoryState) loadMemory();
+  if (!memoryState.dailyDigest) {
+    memoryState.dailyDigest = { enabled: false, time: '02:00', lastRun: null, history: [] };
+  }
+
+  if (enabled === null || enabled === undefined) {
+    memoryState.dailyDigest.enabled = !memoryState.dailyDigest.enabled;
+  } else {
+    memoryState.dailyDigest.enabled = Boolean(enabled);
+  }
+
+  memoryState.updatedAt = new Date().toISOString();
+  persistMemoryAtomic();
+
+  const status = getDigestStatus();
+  notifyBroadcast('digestStatusChanged', { status });
+  return status;
+}
+
+function generateDigest({ force = false, source = 'system' } = {}) {
+  if (!memoryState) loadMemory();
+  const digest = memoryState.dailyDigest || { enabled: false, time: '02:00', lastRun: null, history: [] };
+
+  if (!digest.enabled && !force) {
+    return {
+      ok: false,
+      preserved: true,
+      message: 'Daily Digest Notturno è disattivato per preservare quote ed energia. Attivalo tramite toggleDigest() o specifica force: true.'
+    };
+  }
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('it-IT');
+  const rules = memoryState.rules || [];
+  const preferences = memoryState.preferences || [];
+  const tools = memoryState.customTools || [];
+  const feedback = memoryState.feedback || [];
+
+  const routingMod = require('./routing');
+  const rawProj = typeof routingMod.getTargetProject === 'function' ? routingMod.getTargetProject() : 'AziendaAI';
+  const cleanProj = sanitizePublicText(path.basename(rawProj));
+
+  const reportItem = {
+    id: `digest-${Date.now()}`,
+    date: now.toISOString().split('T')[0],
+    timestamp: now.toISOString(),
+    source: sanitizePublicText(source || 'Nightly Scheduler'),
+    activeProject: cleanProj,
+    metrics: {
+      rulesLearned: rules.length,
+      preferencesStored: preferences.length,
+      toolsActive: tools.length,
+      feedbackLogged: feedback.length
+    },
+    highlights: [
+      `Memoria aziendale aggiornata: ${rules.length} regole operative e ${preferences.length} preferenze`,
+      `Custom tools verificati: ${tools.filter(t => t.approved).length}/${tools.length} approvati per l'uso`,
+      `Workspace attivo: ${cleanProj}`
+    ],
+    summaryText: sanitizePublicText(`🌙 Daily Digest [${dateStr}] — Workspace: ${cleanProj} | Regole: ${rules.length} | Preferenze: ${preferences.length} | Tools: ${tools.length}`)
+  };
+
+  if (!Array.isArray(digest.history)) {
+    digest.history = [];
+  }
+  digest.history.unshift(reportItem);
+  if (digest.history.length > 14) {
+    digest.history = digest.history.slice(0, 14);
+  }
+  digest.lastRun = reportItem.timestamp;
+  memoryState.dailyDigest = digest;
+  memoryState.updatedAt = now.toISOString();
+  persistMemoryAtomic();
+
+  notifyBroadcast('digestGenerated', { digest: reportItem });
+  return { ok: true, digest: reportItem };
+}
+
 module.exports = {
   init,
   getMemory,
   getSkillGraph,
+  getNeuralGraph,
+  getDigestStatus,
+  toggleDigest,
+  generateDigest,
+  sanitizePublicText,
+  invalidateNeuralCache,
   learnFact,
   registerCustomTool,
   approveCustomTool,

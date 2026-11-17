@@ -809,7 +809,7 @@
           <button class="quick-chip" id="chip-check" onclick="quickTask(appLang === 'it' ? 'Esegui check di integrità e stato del codice' : 'Run code integrity and status check')">🔍 Check Stato</button>
           <button class="quick-chip" id="chip-git" onclick="quickTask(appLang === 'it' ? 'Esegui git status e verifica modifiche' : 'Run git status and check changes')">🐙 Git Status</button>
           <button class="quick-chip" id="chip-audit" onclick="quickTask(appLang === 'it' ? 'Avvia test di sicurezza e QA' : 'Run security and QA audit')">🛡️ Audit Sicurezza</button>
-          <button class="quick-chip" id="chip-perm" style="border-color:#d29922; color:#e3b341;" onclick="simulatePermissionRequest()">⚠️ Test Autorizzazione</button>
+          <button class="quick-chip" id="chip-perm" title="Simulazione visiva locale per test interfaccia (Nessuna notifica Discord)" style="border-color:#d29922; color:#e3b341;" onclick="simulatePermissionRequest()">⚠️ Test Autorizzazione</button>
           <button class="quick-chip" id="chip-walk" style="border-color:#58a6ff; color:#58a6ff;" onclick="simulateDelegationWalk()">🚶‍♂️ Test Delegacy Alberto→Luigi</button>
           <button class="quick-chip" id="chip-lounge" style="border-color:#bc8cff; color:#bc8cff;" onclick="toggleLoungeBreak()">☕ Pausa Divano</button>
           <button class="quick-chip" id="chip-standup" style="border-color:#3fb950; color:#3fb950;" onclick="triggerStandupMeeting()">📢 Convoca Riunione</button>
@@ -1592,10 +1592,15 @@
         const perm = activePermissions[selectedId];
         if (!perm) return;
         const time = new Date().toLocaleTimeString();
-        const actionStr = approved ? 'AUTORIZZATO' : 'RIFIUTATO';
-        appendLog(selectedId, `[${time}] ${approved ? '🟢' : '🔴'} Permesso ${actionStr}: ${perm.tool} -> "${perm.command}"`, approved ? 'activity' : 'perm-warn');
+        const isIt = appLang === 'it';
+        const actionStr = approved ? (isIt ? 'AUTORIZZATO' : 'APPROVED') : (isIt ? 'RIFIUTATO' : 'REJECTED');
+        const isSim = Boolean(perm.isSimulation || perm.isDemo);
+        const simPrefix = isSim ? (isIt ? '[DEMO LOCALE] ' : '[LOCAL DEMO] ') : '';
+        appendLog(selectedId, `[${time}] ${approved ? '🟢' : '🔴'} ${simPrefix}Permesso ${actionStr}: ${perm.tool} -> "${perm.command}"`, approved ? 'activity' : 'perm-warn');
+        playRetroSound(approved ? 'complete' : 'permission');
 
-        if (ws && ws.readyState === WebSocket.OPEN) {
+        // Solo per richieste reali inviamo la risposta WebSocket al server e a Discord
+        if (!isSim && ws && ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({
             type: 'permissionResponse',
             agentId: selectedId,
@@ -1608,38 +1613,35 @@
 
         activePermissions[selectedId] = null;
         renderPermissionBox();
-        agentStatuses[selectedId] = approved ? `⚡ Esecuzione autorizzata: ${perm.tool}` : '🟢 In attesa di istruzioni (Idle)';
+        agentStatuses[selectedId] = approved 
+          ? (isIt ? `⚡ Esecuzione autorizzata: ${perm.tool}` : `⚡ Execution authorized: ${perm.tool}`) 
+          : (isIt ? '🟢 In attesa di istruzioni (Idle)' : '🟢 Waiting for instructions (Idle)');
         updateStatusDisplay(selectedId);
+        renderPills();
       }
 
       function simulatePermissionRequest(agentId = selectedId, tool = 'run_command', command = 'git push origin main') {
         const time = new Date().toLocaleTimeString();
+        const isIt = appLang === 'it';
         const req = {
           agentId: selectedId,
           requestId: `perm_sim_${Date.now()}`,
           tool: tool,
           command: command,
-          description: 'Richiesta di approvazione simulata per test UI/Canvas.',
+          description: isIt 
+            ? '⚠️ [DEMO LOCALE] Simulazione autorizzazione UI. Nessun comando reale o notifica Discord inoltrata.'
+            : '⚠️ [LOCAL DEMO] UI authorization simulation. No real command or Discord notification dispatched.',
           time: time,
-          isSimulation: true
+          isSimulation: true,
+          isDemo: true
         };
+        playRetroSound('permission');
         activePermissions[selectedId] = req;
         renderPermissionBox();
-        appendLog(selectedId, `[${time}] ⚠️ Richiesta autorizzazione simulata per: ${tool} -> "${command}"`, 'perm-warn');
-        agentStatuses[selectedId] = `⚠️ In attesa di approvazione (${tool})`;
+        appendLog(selectedId, `[${time}] ⚠️ ${isIt ? '[DEMO LOCALE] Richiesta autorizzazione simulata' : '[LOCAL DEMO] Simulated permission request'}: ${tool} -> "${command}"`, 'perm-warn');
+        agentStatuses[selectedId] = isIt ? `⚠️ [DEMO] In attesa di approvazione (${tool})` : `⚠️ [DEMO] Waiting for approval (${tool})`;
         updateStatusDisplay(selectedId);
-
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            type: 'requestPermission',
-            agentId: selectedId,
-            requestId: req.requestId,
-            tool: tool,
-            command: command,
-            description: req.description,
-            isSimulation: true
-          }));
-        }
+        renderPills();
       }
 
       function selectAgent(id, notifyWs = false) {
@@ -1831,19 +1833,21 @@
             agentLastActiveAt[targetId] = Date.now();
             agentOnSofa[targetId] = false;
             ensureAgentAtWorkDesk(targetId);
+            const isSim = Boolean(msg.isSimulation || String(msg.requestId).includes('sim'));
             activePermissions[targetId] = {
               agentId: targetId,
               requestId: msg.requestId,
               tool: msg.tool,
               command: msg.command,
               description: msg.description,
-              time: msg.time || time
+              time: msg.time || time,
+              isSimulation: isSim
             };
             if (targetId === selectedId) {
               renderPermissionBox();
             }
             renderPills();
-            appendLog(targetId, `[${time}] ⚠️ Richiesta autorizzazione: ${msg.tool} -> "${msg.command}"`, 'perm-warn');
+            appendLog(targetId, `[${time}] ⚠️ ${isSim ? '[DEMO] ' : ''}Richiesta autorizzazione: ${msg.tool} -> "${msg.command}"`, 'perm-warn');
           }
 
           // Esito risoluzione permesso

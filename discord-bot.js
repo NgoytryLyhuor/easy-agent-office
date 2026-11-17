@@ -152,6 +152,7 @@ function buildPanelActionRows() {
   );
   const row3 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('panel_memory_view').setLabel('🧬 Memoria & Skill').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('panel_digest_toggle').setLabel('🌙 Daily Digest').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('panel_git_check').setLabel('🐙 Git Check').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('panel_refresh_quota').setLabel('🔄 Aggiorna Quote').setStyle(ButtonStyle.Primary)
   );
@@ -171,6 +172,7 @@ function getControlPanelEmbed() {
       { name: '⚔️ War Room Drill', value: 'Red Team (Carlo) vs Blue Team (Luigi)', inline: true },
       { name: '🛡️ Audit Sicurezza', value: 'Ispezione codice e dipendenze', inline: true },
       { name: '🧬 Memoria & Skill', value: 'Riepilogo regole, preferenze e grafo skill', inline: true },
+      { name: '🌙 Daily Digest', value: 'Toggle digest notturno (Zero consumo quote se OFF)', inline: true },
       { name: '🐙 Git Check', value: 'Verifica branch e modifiche git', inline: true },
       { name: '🔄 Aggiorna Quote', value: 'Sincronizza telemetria quote live', inline: true }
     )
@@ -409,6 +411,46 @@ function initDiscordBot(onBroadcast) {
       return;
     }
 
+    if (content.toLowerCase().startsWith('!digest')) {
+      const digestArg = content.replace(/^!digest\s*/i, '').trim().toLowerCase();
+      try {
+        const memoryEngine = require('./memory-engine');
+        if (digestArg === 'run' || digestArg === 'now') {
+          const res = memoryEngine.generateDigest({ force: true, source: `Discord (${message.author.username})` });
+          if (res.ok) {
+            const embed = new EmbedBuilder()
+              .setTitle('🌙 Daily Digest Notturno Generato (On-Demand)')
+              .setDescription(res.digest.summaryText)
+              .setColor(0x58a6ff)
+              .addFields(
+                { name: 'Workspace', value: `\`${res.digest.activeProject}\``, inline: true },
+                { name: 'Regole Apprese', value: `${res.digest.metrics.rulesLearned}`, inline: true },
+                { name: 'Preferenze', value: `${res.digest.metrics.preferencesStored}`, inline: true }
+              )
+              .setTimestamp();
+            await message.channel.send({ embeds: [embed] }).catch(() => {});
+          } else {
+            await message.channel.send(`⚠️ ${res.message}`).catch(() => {});
+          }
+          return;
+        }
+
+        // Toggle on/off
+        const newStatus = memoryEngine.toggleDigest();
+        const embed = new EmbedBuilder()
+          .setTitle(`🌙 Daily Digest Notturno: ${newStatus.enabled ? '🟢 ATTIVO' : '💤 IN PAUSA (ZERO SPRECO)'}`)
+          .setDescription(newStatus.enabled
+            ? `Daily Digest Notturno **attivato**! Verrà compilato alle ore \`${newStatus.time}\`.`
+            : `Daily Digest Notturno **disattivato** per preservare quote AI ed evitare consumi inutili.`)
+          .setColor(newStatus.enabled ? 0x2ea043 : 0x8b949e)
+          .setTimestamp();
+        await message.channel.send({ embeds: [embed] }).catch(() => {});
+      } catch (err) {
+        await message.channel.send(`⚠️ Errore comando digest: ${err.message}`).catch(() => {});
+      }
+      return;
+    }
+
     if (content.startsWith('!')) {
       const parts = content.slice(1).split(' ');
       const prefix = parts[0].toLowerCase();
@@ -582,6 +624,37 @@ function initDiscordBot(onBroadcast) {
             }
           } catch (err) {
             console.warn('[Discord Bot] Errore visualizzazione memoria da bottone:', err.message);
+          }
+          break;
+        }
+        case 'panel_digest_toggle': {
+          actionTitle = '🌙 Gestione Daily Digest Notturno';
+          actionInstruction = 'Attiva o disattiva il Daily Digest Notturno aziendale per preservare le quote AI.';
+          try {
+            const memoryEngine = require('./memory-engine');
+            const newStatus = memoryEngine.toggleDigest();
+            const guildObj = interaction.guild;
+            const albertoChannel = guildObj ? guildObj.channels.cache.find(c => c.isTextBased() && (c.name.includes('alberto') || c.name.includes('ceo'))) : null;
+
+            if (albertoChannel) {
+              const digestEmbed = new EmbedBuilder()
+                .setTitle(`🌙 Daily Digest Notturno: ${newStatus.enabled ? '🟢 ATTIVO' : '💤 IN PAUSA (ZERO SPRECO)'}`)
+                .setDescription(newStatus.enabled
+                  ? `Il Daily Digest Notturno è stato **attivato** da <@${interaction.user.id}>.\nVerrà generato alle ore \`${newStatus.time}\` con riepilogo sprint e regole apprese.`
+                  : `Il Daily Digest Notturno è stato **disattivato** da <@${interaction.user.id}> per preservare quote AI ed energia elettrica. Nessuna risorsa verrà consumata a vuoto durante la notte.`)
+                .setColor(newStatus.enabled ? 0x2ea043 : 0x8b949e)
+                .addFields(
+                  { name: 'Stato', value: newStatus.enabled ? '🟢 Abilitato' : '💤 Pausa per Risparmio Quote', inline: true },
+                  { name: 'Orario Programmato', value: `\`${newStatus.time}\``, inline: true },
+                  { name: 'Storico Report', value: `${newStatus.historyCount} archiviati`, inline: true }
+                )
+                .setFooter({ text: 'Daily Digest Config • Risparmio energetico e quote attivo' })
+                .setTimestamp();
+
+              await albertoChannel.send({ embeds: [digestEmbed] }).catch(() => {});
+            }
+          } catch (err) {
+            console.warn('[Discord Bot] Errore toggle digest da bottone:', err.message);
           }
           break;
         }

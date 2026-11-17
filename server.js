@@ -1415,8 +1415,8 @@ wss.on('connection', (ws, req) => {
           toolId: requestId
         });
 
-        // 3. Notifica interattiva su Discord circoscritta (MAI per richieste simulate, di test o in auto-approvazione)
-        const isSimulation = Boolean(data.isSimulation || String(requestId).includes('sim') || String(requestId).includes('test') || String(description).toLowerCase().includes('simulaz'));
+        // 3. Notifica interattiva su Discord circoscritta (MAI per richieste simulate, demo, di test o in auto-approvazione)
+        const isSimulation = Boolean(data.isSimulation || data.isDemo || String(requestId).includes('sim') || String(requestId).includes('test') || String(description).toLowerCase().includes('simulaz'));
         if (!isSimulation && Boolean(data.notifyDiscord)) {
           sendDiscordPermissionPrompt(requestId, targetId, (TEAM.find(a => a.id === targetId) || TEAM[0]).name, tool, command, description, { isSimulation });
         }
@@ -1431,11 +1431,14 @@ wss.on('connection', (ws, req) => {
           permissionActive: true
         });
       } else if (data.type === 'permissionResponse') {
+        const isSimulation = Boolean(data.isSimulation || data.isDemo || (data.requestId && String(data.requestId).includes('sim')));
         const targetId = Number(data.agentId || data.id) || 10;
         const agent = TEAM.find(a => a.id === targetId) || TEAM[0];
         const isApproved = !!data.approved;
-        const logLine = `[${new Date().toLocaleTimeString()}] ${isApproved ? '🟢' : '🔴'} Permesso ${isApproved ? 'AUTORIZZATO' : 'NEGATO'} dall'utente per "${data.tool || 'azione'}"`;
-        agent.logs.push(logLine);
+        const logLine = `[${new Date().toLocaleTimeString()}] ${isApproved ? '🟢' : '🔴'} ${isSimulation ? '[SIMULAZIONE] ' : ''}Permesso ${isApproved ? 'AUTORIZZATO' : 'NEGATO'} dall'utente per "${data.tool || 'azione'}"`;
+        if (!isSimulation) {
+          agent.logs.push(logLine);
+        }
 
         broadcast({
           type: 'permissionResolved',
@@ -1443,6 +1446,7 @@ wss.on('connection', (ws, req) => {
           id: targetId,
           requestId: data.requestId,
           approved: isApproved,
+          isSimulation,
           log: logLine
         });
 
@@ -1599,6 +1603,21 @@ app.post('/api/ceo-report', (req, res) => {
   });
 });
 
+// Daily Digest Notturno Configurabile (Preservazione Quote / Zero Spreco)
+app.get(['/api/digest/status', '/api/daily-digest/status'], (req, res) => {
+  res.json(memoryEngine.getDigestStatus());
+});
+
+app.post(['/api/digest/toggle', '/api/daily-digest/toggle'], (req, res) => {
+  const result = memoryEngine.toggleDigest(req.body ? req.body.enabled : null);
+  res.json(result);
+});
+
+app.post(['/api/digest/run', '/api/daily-digest/run'], (req, res) => {
+  const result = memoryEngine.generateDigest(req.body || {});
+  res.json(result);
+});
+
 app.post('/api/permission/request', (req, res) => {
   const { agentId, tool, command, description } = req.body || {};
   const cleanTool = String(tool || 'run_command').slice(0, 100);
@@ -1634,8 +1653,8 @@ app.post('/api/permission/request', (req, res) => {
     permissionActive: true
   });
 
-  // Notifica interattiva su Discord circoscritta (MAI per richieste simulate, di test o in auto-approvazione)
-  const isSimulation = Boolean(req.body && (req.body.isSimulation || String(requestId).includes('sim') || String(requestId).includes('test') || String(cleanDescription).toLowerCase().includes('simulaz')));
+  // Notifica interattiva su Discord circoscritta (MAI per richieste simulate, demo, di test o in auto-approvazione)
+  const isSimulation = Boolean(req.body && (req.body.isSimulation || req.body.isDemo || String(requestId).includes('sim') || String(requestId).includes('test') || String(cleanDescription).toLowerCase().includes('simulaz')));
   if (!isSimulation && Boolean(req.body && req.body.notifyDiscord)) {
     try {
       sendDiscordPermissionPrompt(requestId, targetId, targetName, cleanTool, cleanCommand, cleanDescription, { isSimulation });
@@ -1758,6 +1777,11 @@ app.get('/api/memory/skills', (req, res) => {
     ok: true,
     skillGraph: memoryEngine.getSkillGraph()
   });
+});
+
+// The Living Brain 3D — Mappa Neurale Tridimensionale
+app.get('/api/memory/neural-graph', (req, res) => {
+  res.json(memoryEngine.getNeuralGraph());
 });
 
 app.post('/api/memory/learn', (req, res) => {
