@@ -1839,6 +1839,9 @@ app.post('/api/memory/tool/execute', async (req, res) => {
 // Monitor log transcript da Antigravity per live streaming e animazioni
 const filePositions = new Map();
 const delegationActiveUntil = new Map();
+const lastTranscriptActivity = new Map();
+const agentIsWorking = new Map();
+const lastPeriodicIdleBroadcast = new Map();
 const SUBAGENT_MAP = routing.allSessionsMap();
 
 function formatToolDesc(call) {
@@ -1864,7 +1867,10 @@ function formatToolDesc(call) {
 // Pre-carica i log recenti storici dai file transcript di Antigravity
 function preloadAgentLogs() {
   if (!fs.existsSync(BRAIN_DIR)) return;
+  const now = Date.now();
   for (const [sid, agentId] of Object.entries(routing.allSessionsMap())) {
+    lastTranscriptActivity.set(agentId, now - 10000);
+    agentIsWorking.set(agentId, false);
     const sessionPath = path.join(BRAIN_DIR, sid);
     const transcriptPath = path.join(sessionPath, '.system_generated', 'logs', 'transcript.jsonl');
     if (!fs.existsSync(transcriptPath)) continue;
@@ -1935,6 +1941,7 @@ function monitorLiveAntigravity() {
 
         const prevPos = filePositions.get(transcriptPath);
         if (stats.size > prevPos) {
+          lastTranscriptActivity.set(agentId, Date.now());
           const fd = fs.openSync(transcriptPath, 'r');
           const bufferSize = stats.size - prevPos;
           const buffer = Buffer.alloc(bufferSize);
@@ -1980,6 +1987,8 @@ function monitorLiveAntigravity() {
               }
 
               if (parsed.type === 'PLANNER_RESPONSE' && parsed.tool_calls) {
+                lastTranscriptActivity.set(agentId, Date.now());
+                agentIsWorking.set(agentId, true);
                 for (const call of parsed.tool_calls) {
                   const statusDesc = formatToolDesc(call);
                   const timeStr = parsed.created_at ? new Date(parsed.created_at).toLocaleTimeString() : new Date().toLocaleTimeString();
@@ -2031,16 +2040,19 @@ function monitorLiveAntigravity() {
                   }
                 }
               } else if (parsed.type === 'PLANNER_RESPONSE') {
+                lastTranscriptActivity.set(agentId, Date.now());
                 // Non emettere agentToolsClear se l'agente sta eseguendo o ha appena eseguito send_message per non interrompere bruscamente la camminata
                 const until = delegationActiveUntil.get(agentId) || 0;
                 const isDelivering = Date.now() < until;
                 if (!isDelivering) {
+                  agentIsWorking.set(agentId, false);
                   broadcast({ type: 'agentToolsClear', id: agentId, agentId: agentId });
                   broadcast({ type: 'agentStatus', id: agentId, agentId: agentId, status: 'waiting' });
                 } else {
                   // Differito: pulisce i tool solo dopo che l'animazione di consegna sul canvas è completata
                   const delay = Math.max(1500, until - Date.now());
                   setTimeout(() => {
+                    agentIsWorking.set(agentId, false);
                     broadcast({ type: 'agentToolsClear', id: agentId, agentId: agentId });
                     broadcast({ type: 'agentStatus', id: agentId, agentId: agentId, status: 'waiting' });
                   }, delay);
@@ -2080,6 +2092,22 @@ function monitorLiveAntigravity() {
 
                   sendFinalAgentResponse(agentId, finalText);
                 }
+              } else if (parsed.type === 'GENERIC' || parsed.type === 'SYSTEM_MESSAGE') {
+                lastTranscriptActivity.set(agentId, Date.now());
+                const genericContent = typeof parsed.content === 'string' ? parsed.content : '';
+                const isSentMessage = genericContent.includes('Message sent to');
+                const debounceMs = isSentMessage ? 1200 : 1800;
+
+                setTimeout(() => {
+                  const until = delegationActiveUntil.get(agentId) || 0;
+                  const isDelivering = Date.now() < until;
+                  const timeSinceLastAct = Date.now() - (lastTranscriptActivity.get(agentId) || 0);
+                  if (!isDelivering && timeSinceLastAct >= 1000) {
+                    agentIsWorking.set(agentId, false);
+                    broadcast({ type: 'agentToolsClear', id: agentId, agentId: agentId });
+                    broadcast({ type: 'agentStatus', id: agentId, agentId: agentId, status: 'waiting' });
+                  }
+                }, debounceMs);
               }
 
               // Calcola e trasmette l'uso token contestuale reale esatto dell'ultimo step
@@ -2095,6 +2123,55 @@ function monitorLiveAntigravity() {
           }
         }
       } catch {}
+    }
+
+    // ====================================================================
+    // INACTIVITY WATCHDOG & IDLE HEALING (CARLO QA & SECURITY AUDIT)
+    // ====================================================================
+    const now = Date.now();
+    let taskQueueCache = null;
+
+    for (const [sid, agentId] of Object.entries(routing.allSessionsMap())) {
+      const lastAct = lastTranscriptActivity.get(agentId) || 0;
+      const isWorking = agentIsWorking.get(agentId);
+      const until = delegationActiveUntil.get(agentId) || 0;
+      const isDelivering = now < until;
+
+      // 1. Inactivity Watchdog: se l'agente risulta occupato ma non arrivano byte da > 3.5s e non c'è delega in corso
+      if (isWorking && (now - lastAct > 3500) && !isDelivering) {
+        agentIsWorking.set(agentId, false);
+        broadcast({ type: 'agentToolsClear', id: agentId, agentId: agentId });
+        broadcast({ type: 'agentStatus', id: agentId, agentId: agentId, status: 'waiting' });
+
+        if (!taskQueueCache) taskQueueCache = loadTaskQueue();
+        let qUpdated = false;
+        for (let i = taskQueueCache.length - 1; i >= 0; i--) {
+          if (Number(taskQueueCache[i].agentId) === Number(agentId) && (taskQueueCache[i].status === 'dispatched' || taskQueueCache[i].status === 'running')) {
+            taskQueueCache[i].status = 'completed';
+            taskQueueCache[i].exitCode = 0;
+            taskQueueCache[i].output = taskQueueCache[i].output || 'Task completato (inattività rilevata / fine turno subagent)';
+            qUpdated = true;
+          }
+        }
+        if (qUpdated) {
+          saveTaskQueue(taskQueueCache);
+          broadcast({ type: 'tasksQueueUpdated', queue: taskQueueCache, mode: routing.getMode() });
+        }
+      }
+
+      // 2. Controllo periodico Coda Task: se non ci sono task dispatched/running e l'agente è fermo da > 5s,
+      // ribadisce lo stato idle/waiting e pulisce eventuali tool orfani ogni 15s per garantire resilienza canvas
+      const lastPeriodic = lastPeriodicIdleBroadcast.get(agentId) || 0;
+      if (!isDelivering && (now - lastAct > 5000) && (now - lastPeriodic > 15000)) {
+        if (!taskQueueCache) taskQueueCache = loadTaskQueue();
+        const hasActiveTask = taskQueueCache.some(t => Number(t.agentId) === Number(agentId) && (t.status === 'dispatched' || t.status === 'running'));
+        if (!hasActiveTask) {
+          lastPeriodicIdleBroadcast.set(agentId, now);
+          agentIsWorking.set(agentId, false);
+          broadcast({ type: 'agentToolsClear', id: agentId, agentId: agentId });
+          broadcast({ type: 'agentStatus', id: agentId, agentId: agentId, status: 'waiting' });
+        }
+      }
     }
   } catch {}
 }

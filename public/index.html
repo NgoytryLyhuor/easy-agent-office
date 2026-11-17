@@ -2491,6 +2491,7 @@
             } else {
               agentWorking[targetId] = false;
               agentLastActiveAt[targetId] = Date.now() - 5000;
+              clearAgentOfficeTool(targetId);
               setAgentLounge(targetId, true, false);
             }
             if (msg.status) {
@@ -2503,20 +2504,14 @@
           }
 
           // Completamento tool o attesa
-          if (msg.type === 'agentStatus' && msg.status === 'waiting') {
+          if (msg.type === 'agentStatus' && (msg.status === 'waiting' || msg.status === 'idle')) {
             const targetId = Number(msg.id || msg.agentId || 10);
             agentWorking[targetId] = false;
             agentLastActiveAt[targetId] = Date.now() - 5000;
             agentStatuses[targetId] = '🟢 In attesa di istruzioni (Idle)';
             updateStatusDisplay(targetId);
             appendLog(targetId, `[${time}] ✔ Operazione completata. In attesa di nuove istruzioni.`, 'done');
-            const office = window.__officeState;
-            if (office && office.characters) {
-              const ch = office.characters.get(targetId);
-              if (office.agentTools && office.agentTools[targetId]) {
-                office.agentTools[targetId].forEach(t => { t.done = true; });
-              }
-            }
+            clearAgentOfficeTool(targetId);
             // Ritorno immediato al divano lounge
             setAgentLounge(targetId, true, false);
           }
@@ -2527,13 +2522,7 @@
             agentLastActiveAt[targetId] = Date.now() - 5000;
             agentStatuses[targetId] = '🟢 In attesa di istruzioni (Idle)';
             updateStatusDisplay(targetId);
-            const office = window.__officeState;
-            if (office && office.characters) {
-              const ch = office.characters.get(targetId);
-              if (office.agentTools && office.agentTools[targetId]) {
-                office.agentTools[targetId].forEach(t => { t.done = true; });
-              }
-            }
+            clearAgentOfficeTool(targetId);
             // Ritorno immediato al divano lounge
             setAgentLounge(targetId, true, false);
           }
@@ -2596,10 +2585,7 @@
                 ensureAgentAtWorkDesk(aId);
               } else if (!activePermissions[aId]) {
                 agentWorking[aId] = false;
-                const office = window.__officeState;
-                if (office && office.agentTools && office.agentTools[aId]) {
-                  office.agentTools[aId].forEach(t => { t.done = true; });
-                }
+                clearAgentOfficeTool(aId);
               }
             });
           }
@@ -2812,17 +2798,13 @@
           if (!toHasActiveTask && !activePermissions[tId]) {
             agentWorking[tId] = false;
             agentLastActiveAt[tId] = Date.now();
-            if (office && office.agentTools && office.agentTools[tId]) {
-              office.agentTools[tId].forEach(t => { t.done = true; });
-            }
+            clearAgentOfficeTool(tId);
           }
           const fromHasActiveTask = kanbanTasks && kanbanTasks.some(k => Number(k.agentId) === fId && (k.status === 'running' || k.status === 'dispatched'));
           if (!fromHasActiveTask && !activePermissions[fId]) {
             agentWorking[fId] = false;
             agentLastActiveAt[fId] = Date.now();
-            if (office && office.agentTools && office.agentTools[fId]) {
-              office.agentTools[fId].forEach(t => { t.done = true; });
-            }
+            clearAgentOfficeTool(fId);
           }
 
           // Se chi ha delegato o ricevuto non sta lavorando, si accomoda sul proprio divanetto lounge
@@ -2897,6 +2879,29 @@
       let isLoungeBreakActive = false;
       let lastTeamActivityAt = Date.now();
 
+      // Reset pulito dei tool e dello stato Idle per il motore Pixel Agents (Carlo QA Audit)
+      function clearAgentOfficeTool(agentId) {
+        const id = Number(agentId);
+        const office = window.__officeState;
+        if (!office) return;
+        if (office.agentTools) {
+          office.agentTools[id] = [];
+        }
+        if (typeof office.setAgentTool === 'function') {
+          office.setAgentTool(id, null);
+        }
+        if (typeof office.setAgentActive === 'function') {
+          office.setAgentActive(id, false);
+        }
+        if (office.characters) {
+          const ch = office.characters.get(id);
+          if (ch && (!ch.path || ch.path.length === 0)) {
+            ch.isActive = false;
+          }
+        }
+      }
+      window.clearAgentOfficeTool = clearAgentOfficeTool;
+
       // Rimuove in modo permanente dalle collisioni (blockedTiles) le 8 caselle dei sedili degli agenti (4 sedie PC + 4 divanetti)
       // così il pathfinder BFS non troverà mai le sedute bloccate durante l'avvicinamento, il sedersi o il ripartire.
       function unblockAllAgentSeats(office) {
@@ -2919,17 +2924,31 @@
         const ch = office.characters.get(id);
         if (!ch) return;
 
-        // Carlo QA: Prevenzione loop - se ha già questo posto ed è già arrivato o sta già camminando, esci subito!
         const targetSeat = office.seats ? office.seats.get(targetSeatId) : null;
         const isAlreadyAtSeat = targetSeat && (ch.tileCol === targetSeat.seatCol && ch.tileRow === targetSeat.seatRow);
-        const isAlreadyWalkingToSeat = (ch.seatId === targetSeatId && ch.path && ch.path.length > 0);
 
-        if (ch.seatId === targetSeatId && (isAlreadyAtSeat || isAlreadyWalkingToSeat)) {
-          if (onSofa && isAlreadyAtSeat) {
+        // Carlo QA Guard Anti-Loop #1: Se sta già camminando, NON interrompere e lascia completare il tragitto!
+        if (ch.path && ch.path.length > 0) {
+          return;
+        }
+
+        // Carlo QA Guard Anti-Loop #2: Se è già sul sedile target, non richiamare reassignSeat o sendToSeat
+        if (isAlreadyAtSeat) {
+          if (ch.seatId !== targetSeatId && typeof office.reassignSeat === 'function') {
+            office.reassignSeat(id, targetSeatId);
+          }
+          if (onSofa) {
+            ch.isActive = false;
             ch.state = 'type';
             ch.seatTimer = 999999;
             ch.wanderTimer = 999999;
             if (targetSeat && targetSeat.facingDir) ch.dir = targetSeat.facingDir;
+            clearAgentOfficeTool(id);
+          } else {
+            if (!agentWorking[id]) {
+              ch.isActive = false;
+              clearAgentOfficeTool(id);
+            }
           }
           return;
         }
@@ -2971,22 +2990,9 @@
           office.walkToTile(id, targetSeat.seatCol, targetSeat.seatRow);
         }
 
-        // Carlo QA: Rimosso l'iniezione del finto tool attivo. Pulisci lo stato dei tool se l'agente è Idle!
-        if (onSofa) {
-          if (office.agentTools && office.agentTools[id]) {
-            office.agentTools[id].forEach(t => { t.done = true; });
-          }
-          if (isAlreadyAtSeat) {
-            ch.state = 'type';
-            ch.seatTimer = 999999;
-            ch.wanderTimer = 999999;
-            if (targetSeat && targetSeat.facingDir) ch.dir = targetSeat.facingDir;
-          }
-        } else {
-          // Quando va alla scrivania senza task attivi, pulisci i tool per mostrare Idle in hover
-          if (!agentWorking[id] && office.agentTools && office.agentTools[id]) {
-            office.agentTools[id].forEach(t => { t.done = true; });
-          }
+        // Reset pulito dei tool e dello stato Idle quando va sul divanetto o scrivania inattiva
+        if (onSofa || !agentWorking[id]) {
+          clearAgentOfficeTool(id);
         }
       }
 
@@ -2996,15 +3002,16 @@
         if (!office || !office.characters) return;
         const ch = office.characters.get(id);
         if (!ch || ch.isDelivering) return;
+        if (ch.path && ch.path.length > 0) return; // Se sta già camminando, non interrompere!
 
         agentOnSofa[id] = false;
         const deskSeatId = WORK_DESK_SEATS[id];
         if (!deskSeatId) return;
 
         const deskSeat = office.seats ? office.seats.get(deskSeatId) : null;
-        const notAtDesk = !deskSeat || ch.seatId !== deskSeatId || (ch.path && ch.path.length === 0 && (ch.tileCol !== deskSeat.seatCol || ch.tileRow !== deskSeat.seatRow));
+        const isAtDesk = deskSeat && (ch.tileCol === deskSeat.seatCol && ch.tileRow === deskSeat.seatRow);
 
-        if (notAtDesk) {
+        if (!isAtDesk || ch.seatId !== deskSeatId) {
           moveAgentToSeat(id, deskSeatId, false);
         }
       }
@@ -3023,22 +3030,36 @@
         if (!office || !office.characters) return;
 
         // Regola 2: Chi lavora DEVE RESTARE ALLA SCRIVANIA PC! Mai sul divano se sta lavorando!
-        if (onSofa && agentWorking[id]) {
+        if (onSofa && agentWorking[id] && !force) {
           return;
         }
 
+        const ch = office.characters.get(id);
+        if (!ch || ch.isDelivering) return;
+
+        // Se sta già camminando, lascia completare la camminata per evitare loop
+        if (ch.path && ch.path.length > 0) return;
+
+        const targetSeat = onSofa ? LOUNGE_SOFA_SEATS[id] : WORK_DESK_SEATS[id];
+        const targetSeatObj = (office.seats && targetSeat) ? office.seats.get(targetSeat) : null;
+        const isAlreadyAtTarget = targetSeatObj && (ch.tileCol === targetSeatObj.seatCol && ch.tileRow === targetSeatObj.seatRow);
+
         if (agentOnSofa[id] === onSofa) {
-          const ch = office.characters.get(id);
-          const targetSeat = onSofa ? LOUNGE_SOFA_SEATS[id] : WORK_DESK_SEATS[id];
-          if (ch && !ch.isDelivering && ch.seatId !== targetSeat) {
+          if (!isAlreadyAtTarget && ch.seatId !== targetSeat) {
             moveAgentToSeat(id, targetSeat, onSofa);
+          } else if (onSofa && isAlreadyAtTarget) {
+            ch.isActive = false;
+            ch.state = 'type';
+            ch.seatTimer = 999999;
+            ch.wanderTimer = 999999;
+            if (targetSeatObj && targetSeatObj.facingDir) ch.dir = targetSeatObj.facingDir;
+            clearAgentOfficeTool(id);
           }
           return;
         }
         agentOnSofa[id] = onSofa;
         isLoungeBreakActive = Object.values(agentOnSofa).some(Boolean);
 
-        const targetSeat = onSofa ? LOUNGE_SOFA_SEATS[id] : WORK_DESK_SEATS[id];
         if (targetSeat) {
           moveAgentToSeat(id, targetSeat, onSofa);
         }
@@ -3095,9 +3116,7 @@
           const hasQueueTask = kanbanTasks && kanbanTasks.some(t => Number(t.agentId) === id && (t.status === 'running' || t.status === 'dispatched'));
           if (!hasQueueTask && !activePermissions[id] && (now - (agentLastActiveAt[id] || 0) > IDLE_LOUNGE_TIMEOUT_MS)) {
             agentWorking[id] = false;
-            if (office.agentTools && office.agentTools[id]) {
-              office.agentTools[id].forEach(t => { t.done = true; });
-            }
+            clearAgentOfficeTool(id);
           }
 
           const isActivelyWorking = Boolean(agentWorking[id]) || (now - (agentLastActiveAt[id] || 0) < IDLE_LOUNGE_TIMEOUT_MS);
@@ -3110,9 +3129,8 @@
             ensureAgentAtWorkDesk(id);
           } else {
             // INATTIVO (IDLE): RITORNA SEDUTO SUL DIVANO IN SALA RELAX SENZA INTASARE IL LOG
-            if (office.agentTools && office.agentTools[id]) {
-              office.agentTools[id].forEach(t => { t.done = true; });
-            }
+            clearAgentOfficeTool(id);
+
             const sofaSeatId = LOUNGE_SOFA_SEATS[id];
             const sofaSeat = office.seats ? office.seats.get(sofaSeatId) : null;
             const isAtSofa = sofaSeat && (ch.tileCol === sofaSeat.seatCol && ch.tileRow === sofaSeat.seatRow);
@@ -3127,6 +3145,7 @@
               }
             } else {
               // Rinforza lo stato di permanenza rilassata sul divanetto
+              ch.isActive = false;
               ch.state = 'type';
               ch.seatTimer = 999999;
               ch.wanderTimer = 999999;

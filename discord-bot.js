@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits } = require('discord.js');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -98,6 +98,175 @@ try {
     }
   }
 } catch (_) {}
+
+// ====================================================================
+// SICUREZZA & MODERAZIONE DISCORD — ACCESSO ESCLUSIVO ALBERTOESPO
+// I membri con ruolo 'Cooksnkrs' e generici hanno accesso in SOLA LETTURA
+// ====================================================================
+const AUTHORIZED_USERS = ['albertoespo'];
+const RESTRICTED_ROLES = ['cooksnkrs'];
+
+function isUserAuthorized(userOrMember, guild = null) {
+  if (!userOrMember) return false;
+
+  // 1. Controllo username o tag utente
+  const userObj = userOrMember.user || userOrMember;
+  const username = String(userObj.username || '').toLowerCase().trim();
+  const tag = String(userObj.tag || '').toLowerCase().trim();
+
+  if (AUTHORIZED_USERS.includes(username) || AUTHORIZED_USERS.some(u => tag.startsWith(u))) {
+    return true;
+  }
+
+  // 2. Controllo ruoli e permessi GuildMember
+  let member = userOrMember.roles ? userOrMember : null;
+  if (!member && guild && guild.members && userObj.id) {
+    member = (guild.members.cache && typeof guild.members.cache.get === 'function')
+      ? guild.members.cache.get(userObj.id)
+      : null;
+  }
+
+  if (member) {
+    // Permessi Administrator o ManageGuild sul server
+    if (member.permissions && typeof member.permissions.has === 'function') {
+      if (member.permissions.has(PermissionFlagsBits.Administrator) || member.permissions.has(PermissionFlagsBits.ManageGuild)) {
+        return true;
+      }
+    }
+
+    // Ruoli autorizzati (es. 'CEO', 'Alberto', 'AziendaAI Admin')
+    if (member.roles && member.roles.cache) {
+      const roleNames = (Array.isArray(member.roles.cache) ? member.roles.cache : Array.from(member.roles.cache.values ? member.roles.cache.values() : member.roles.cache)).map(r => String(r.name || '').toLowerCase());
+      if (roleNames.some(r => r === 'ceo' || r === 'alberto' || r === 'aziendaai admin' || r === 'autorizzato')) {
+        return true;
+      }
+      // Se ha il ruolo ristretto 'Cooksnkrs' e nessun ruolo admin
+      if (roleNames.some(r => RESTRICTED_ROLES.includes(r))) {
+        return false;
+      }
+    }
+  }
+
+  return false;
+}
+
+async function applyChannelModerationPermissions(guild) {
+  if (!guild || !guild.channels) {
+    return { ok: false, error: 'Guild non valida o non disponibile' };
+  }
+
+  // Verifica permessi del bot sul server
+  const me = guild.members ? guild.members.me : null;
+  const canManage = me && me.permissions && typeof me.permissions.has === 'function' &&
+    (me.permissions.has(PermissionFlagsBits.ManageChannels) || me.permissions.has(PermissionFlagsBits.Administrator));
+
+  if (!canManage) {
+    return { ok: false, error: 'Permessi insufficienti del bot (richiesto ManageChannels o Administrator)' };
+  }
+
+  try {
+    await guild.channels.fetch().catch(() => {});
+    await guild.roles.fetch().catch(() => {});
+    await guild.members.fetch().catch(() => {});
+
+    // Ricerca ruolo Cooksnkrs
+    const cooksnkrsRole = guild.roles.cache.find(r => String(r.name || '').toLowerCase() === 'cooksnkrs');
+    // Ricerca utente autorizzato albertoespo
+    const albertoMember = guild.members.cache.find(m => m.user && String(m.user.username || '').toLowerCase() === 'albertoespo');
+    const everyoneRole = guild.roles.everyone;
+
+    const managedKeywords = ['alberto', 'ceo', 'luigi', 'backend', 'gabri', 'frontend', 'carlo', 'qa', 'security', 'sala-operativa', 'pannello-controllo', 'monitor-usage'];
+    const channelsToSecure = guild.channels.cache.filter(c => c.isTextBased() && managedKeywords.some(kw => c.name.toLowerCase().includes(kw)));
+
+    let configuredCount = 0;
+
+    for (const channel of channelsToSecure.values()) {
+      try {
+        const overwrites = [];
+
+        // 1. Regola base per @everyone: sola lettura
+        if (everyoneRole) {
+          overwrites.push({
+            id: everyoneRole.id,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory],
+            deny: [
+              PermissionFlagsBits.SendMessages,
+              PermissionFlagsBits.SendMessagesInThreads,
+              PermissionFlagsBits.AddReactions,
+              PermissionFlagsBits.CreatePublicThreads,
+              PermissionFlagsBits.CreatePrivateThreads
+            ]
+          });
+        }
+
+        // 2. Ruolo Cooksnkrs: sola lettura tassativa (SendMessages: false, AddReactions: false)
+        if (cooksnkrsRole) {
+          overwrites.push({
+            id: cooksnkrsRole.id,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory],
+            deny: [
+              PermissionFlagsBits.SendMessages,
+              PermissionFlagsBits.SendMessagesInThreads,
+              PermissionFlagsBits.AddReactions,
+              PermissionFlagsBits.CreatePublicThreads,
+              PermissionFlagsBits.CreatePrivateThreads
+            ]
+          });
+        }
+
+        // 3. Utente autorizzato albertoespo: permessi completi di scrittura e interazione
+        if (albertoMember) {
+          overwrites.push({
+            id: albertoMember.id,
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.ReadMessageHistory,
+              PermissionFlagsBits.SendMessages,
+              PermissionFlagsBits.SendMessagesInThreads,
+              PermissionFlagsBits.AddReactions,
+              PermissionFlagsBits.EmbedLinks,
+              PermissionFlagsBits.AttachFiles
+            ]
+          });
+        }
+
+        // 4. Bot stesso: permessi completi per funzionamento automazioni
+        if (me) {
+          overwrites.push({
+            id: me.id,
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.ReadMessageHistory,
+              PermissionFlagsBits.SendMessages,
+              PermissionFlagsBits.SendMessagesInThreads,
+              PermissionFlagsBits.AddReactions,
+              PermissionFlagsBits.EmbedLinks,
+              PermissionFlagsBits.AttachFiles,
+              PermissionFlagsBits.ManageMessages
+            ]
+          });
+        }
+
+        if (channel.permissionOverwrites && typeof channel.permissionOverwrites.set === 'function') {
+          await channel.permissionOverwrites.set(overwrites);
+          configuredCount++;
+        }
+      } catch (chErr) {
+        console.warn(`[Discord Bot] Impossibile applicare permessi su #${channel.name}:`, chErr.message);
+      }
+    }
+
+    return {
+      ok: true,
+      channelsConfigured: configuredCount,
+      roleFound: Boolean(cooksnkrsRole),
+      albertoFound: Boolean(albertoMember)
+    };
+  } catch (err) {
+    console.warn('[Discord Bot] applyChannelModerationPermissions fallita:', err.message);
+    return { ok: false, error: err.message };
+  }
+}
 
 let client = null;
 let broadcastCallback = null;
@@ -250,6 +419,7 @@ function initDiscordBot(onBroadcast) {
     }
     for (const guild of client.guilds.cache.values()) {
       await ensureControlPanel(guild);
+      await applyChannelModerationPermissions(guild);
     }
   });
 
@@ -257,7 +427,38 @@ function initDiscordBot(onBroadcast) {
   client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
+    // CONTROLLO DI SICUREZZA & MODERAZIONE DISCORD
+    // Solo l'utente autorizzato ('albertoespo') o membri con ruoli amministrativi possono interagire
+    const isAuthorized = isUserAuthorized(message.member || message.author, message.guild);
+    const content = message.content.trim();
     const channelName = message.channel.name ? message.channel.name.toLowerCase() : '';
+
+    // Comando manuale per riapplicare i permessi del server se invocato da albertoespo
+    if (isAuthorized && (content.toLowerCase() === '!securechannels' || content.toLowerCase() === '!lockdown' || content.toLowerCase() === '!permessi')) {
+      if (message.guild) {
+        const res = await applyChannelModerationPermissions(message.guild);
+        if (res.ok) {
+          await message.channel.send(`🛡️ **Permessi di moderazione applicati sui canali aziendali!**\n• Canali protetti: \`${res.channelsConfigured}\`\n• Ruolo \`Cooksnkrs\`: ${res.roleFound ? '🔒 Sola lettura applicata (scrittura e reazioni vietate)' : 'ℹ️ Ruolo non presente sul server'}\n• Utente \`albertoespo\`: ${res.albertoFound ? '✅ Accesso completo scrittura/comandi accordato' : 'ℹ️ Non presente nella cache membri'}`).catch(() => {});
+        } else {
+          await message.channel.send(`⚠️ Errore applicazione permessi canali: ${res.error}`).catch(() => {});
+        }
+      }
+      return;
+    }
+
+    if (!isAuthorized) {
+      if (channelName.includes('pannello-controllo')) {
+        try { await message.delete().catch(() => {}); } catch {}
+        return;
+      }
+      const isAgentChannel = ['alberto', 'ceo', 'luigi', 'backend', 'gabri', 'frontend', 'carlo', 'qa', 'security', 'sala-operativa'].some(k => channelName.includes(k));
+      if (content.startsWith('!') || isAgentChannel) {
+        await message.reply('⛔ **Accesso non autorizzato:** Solo **albertoespo** ha i permessi di scrittura e comando nei canali operativi di AziendaAI. I membri del ruolo `Cooksnkrs` hanno accesso in sola lettura.').catch(() => {});
+        return;
+      }
+      return;
+    }
+
     let target = null;
 
     if (channelName.includes('alberto') || channelName.includes('ceo')) {
@@ -270,7 +471,6 @@ function initDiscordBot(onBroadcast) {
       target = SUBAGENT_CHANNELS['carlo-qa'];
     }
 
-    const content = message.content.trim();
     if (content.toLowerCase().startsWith('!panel')) {
       for (const guild of client.guilds.cache.values()) {
         await ensureControlPanel(guild);
@@ -485,6 +685,15 @@ function initDiscordBot(onBroadcast) {
   // Gestione pulsanti interattivi di autorizzazione permessi su Discord
   client.on('interactionCreate', async interaction => {
     if (!interaction.isButton()) return;
+
+    // CONTROLLO DI SICUREZZA & MODERAZIONE DISCORD PER PULSANTI
+    if (!isUserAuthorized(interaction.member || interaction.user, interaction.guild)) {
+      await interaction.reply({
+        content: '⛔ **Accesso negato:** Solo **albertoespo** ha i permessi di interazione nel Centro di Comando AziendaAI. I membri del ruolo `Cooksnkrs` hanno accesso in sola lettura.',
+        ephemeral: true
+      }).catch(() => {});
+      return;
+    }
 
     if (interaction.customId.startsWith('panel_')) {
       await interaction.reply({
@@ -938,5 +1147,9 @@ module.exports = {
   updateDiscordUsageMonitor,
   ensureControlPanel,
   renderControlPanelMessage,
+  isUserAuthorized,
+  applyChannelModerationPermissions,
+  AUTHORIZED_USERS,
+  RESTRICTED_ROLES,
   getClient: () => client
 };
