@@ -6,6 +6,8 @@ tests/
 .env.local
 *.log
 *.tmp
+*.exe
+bin/
 *.jsonl
 tasks_queue.json
 .last_announced_mode
