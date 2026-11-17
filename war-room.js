@@ -44,7 +44,7 @@ function resolveTargetProjectPath(requestedPath) {
   return { ok: true, path: resolved, name: path.basename(resolved) };
 }
 
-function startWarRoom({ projectPath, scenario, intensity = 'standard', broadcastFn = null, dispatchFn = null } = {}) {
+function startWarRoom({ projectPath, scenario, intensity = 'standard', broadcastFn = null, dispatchFn = null, dispatchSubagent = false, broadcastAlert = true } = {}) {
   const targetRes = resolveTargetProjectPath(projectPath);
   if (!targetRes.ok) {
     return targetRes;
@@ -87,11 +87,12 @@ function startWarRoom({ projectPath, scenario, intensity = 'standard', broadcast
     message: `🚨 WAR ROOM ATTIVA: Carlo (Red Team) avvia simulazione di penetrazione su "${currentWarRoom.projectName}"! Luigi (Blue Team) allertato!`
   };
 
-  if (typeof broadcastFn === 'function') {
+  if (typeof broadcastFn === 'function' && broadcastAlert !== false) {
     broadcastFn(alertPayload);
   }
 
-  if (typeof dispatchFn === 'function') {
+  // Esegui il dispatch a subagent reale SOLO se esplicitamente richiesto (MAI per test o simulazioni automatiche)
+  if (typeof dispatchFn === 'function' && Boolean(dispatchSubagent)) {
     dispatchFn(8, 'Carlo (QA & Security)', `🚨 [WAR ROOM RED TEAM] Carlo, avvia subito una simulazione di penetrazione su "${currentWarRoom.targetProject}". Testa vettori di attacco (injection, path traversal, permessi, segreti) e recapita i findings al Blue Team (Luigi).`);
   }
 

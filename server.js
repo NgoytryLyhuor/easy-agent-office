@@ -1702,11 +1702,13 @@ app.get('/api/war-room/status', (req, res) => {
 });
 
 app.post('/api/war-room/start', (req, res) => {
-  const { projectPath, scenario, intensity } = req.body || {};
+  const { projectPath, scenario, intensity, dispatchSubagent, broadcastAlert } = req.body || {};
   const result = warRoom.startWarRoom({
     projectPath,
     scenario,
     intensity,
+    dispatchSubagent: Boolean(dispatchSubagent),
+    broadcastAlert: broadcastAlert !== false,
     broadcastFn: broadcast,
     dispatchFn: (agentId, agentName, prompt) => {
       const ag = TEAM.find(a => a.id === agentId);
