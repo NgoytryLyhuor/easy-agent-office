@@ -39,6 +39,7 @@ const { PNG } = require('pngjs');
 const { setDiscordWebhook, sendDiscordNotification, getDiscordConfig } = require('./discord-bridge');
 const routing = require('./routing');
 const warRoom = require('./war-room');
+const tunnelManager = require('./tunnel-manager');
 const { resolveLanguageServer } = require('./antigravity-path');
 const { initDiscordBot, broadcastToDiscord, sendDiscordPermissionPrompt, sendFinalAgentResponse, updateDiscordUsageMonitor, sendDiscordAnnouncement } = require('./discord-bot');
 
@@ -1689,6 +1690,29 @@ app.post('/api/war-room/defend', async (req, res) => {
 
 app.post('/api/war-room/stop', (req, res) => {
   const result = warRoom.stopWarRoom({ broadcastFn: broadcast });
+  res.json(result);
+});
+
+// Endpoints Live Preview Tunnel con Cloudflare (Idea #4)
+app.get('/api/tunnel/status', (req, res) => {
+  res.json(tunnelManager.getStatus());
+});
+
+app.post('/api/tunnel/start', async (req, res) => {
+  const { targetDir, port } = req.body || {};
+  const result = await tunnelManager.startTunnel({
+    targetDir: targetDir || routing.getTargetProject(),
+    port: Number(port) || tunnelManager.PREVIEW_PORT,
+    broadcastFn: broadcast
+  });
+  if (!result.ok) {
+    return res.status(500).json(result);
+  }
+  res.json(result);
+});
+
+app.post('/api/tunnel/stop', async (req, res) => {
+  const result = await tunnelManager.stopTunnel(broadcast, 'api_request');
   res.json(result);
 });
 

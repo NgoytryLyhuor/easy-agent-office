@@ -146,12 +146,15 @@ function buildPanelActionRows() {
     new ButtonBuilder().setCustomId('panel_team_status').setLabel('👥 Stato Squadra').setStyle(ButtonStyle.Secondary)
   );
   const row2 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('panel_tunnel_toggle').setLabel('🌐 Live Preview Mobile').setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId('panel_war_room').setLabel('⚔️ War Room / Red Team Drill').setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId('panel_security_audit').setLabel('🛡️ Audit Sicurezza').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('panel_security_audit').setLabel('🛡️ Audit Sicurezza').setStyle(ButtonStyle.Secondary)
+  );
+  const row3 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('panel_git_check').setLabel('🐙 Git Check').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('panel_refresh_quota').setLabel('🔄 Aggiorna Quote').setStyle(ButtonStyle.Primary)
   );
-  return [row1, row2];
+  return [row1, row2, row3];
 }
 
 function getControlPanelEmbed() {
@@ -163,6 +166,7 @@ function getControlPanelEmbed() {
       { name: '📊 Report CEO', value: 'Genera il report esecutivo sprint', inline: true },
       { name: '📢 Standup Meeting', value: 'Convoca la riunione generale', inline: true },
       { name: '👥 Stato Squadra', value: 'Check attività e agenti attivi', inline: true },
+      { name: '🌐 Live Preview Mobile', value: 'Tunnel pubblico Cloudflare (HTTPS) per test da smartphone', inline: true },
       { name: '⚔️ War Room Drill', value: 'Red Team (Carlo) vs Blue Team (Luigi)', inline: true },
       { name: '🛡️ Audit Sicurezza', value: 'Ispezione codice e dipendenze', inline: true },
       { name: '🐙 Git Check', value: 'Verifica branch e modifiche git', inline: true },
@@ -386,6 +390,55 @@ function initDiscordBot(onBroadcast) {
           actionTitle = '👥 Richiesta Verifica Stato Squadra';
           actionInstruction = 'Verifica lo stato operativo della squadra (Luigi, Gabri, Carlo) e riepiloga la situazione corrente.';
           break;
+        case 'panel_tunnel_toggle': {
+          actionTitle = '🌐 Live Preview Mobile: Gestione Tunnel Cloudflare';
+          actionInstruction = 'Attiva o disattiva il tunnel globale Cloudflare su porta isolata 3001 per test da mobile.';
+          try {
+            const tunnelManager = require('./tunnel-manager');
+            const currentStatus = tunnelManager.getStatus();
+            const guildObj = interaction.guild;
+            const albertoChannel = guildObj ? guildObj.channels.cache.find(c => c.isTextBased() && (c.name.includes('alberto') || c.name.includes('ceo'))) : null;
+
+            if (currentStatus.active) {
+              await tunnelManager.stopTunnel(broadcastCallback, 'discord_button');
+              if (albertoChannel) {
+                const embedClose = new EmbedBuilder()
+                  .setTitle('🌐 Live Preview Mobile — Tunnel Disattivato')
+                  .setDescription(`Il tunnel pubblico Cloudflare è stato **chiuso** da <@${interaction.user.id}>.\nL'accesso esterno da mobile è ora disattivato.`)
+                  .setColor(0xda3633)
+                  .setTimestamp();
+                await albertoChannel.send({ embeds: [embedClose] }).catch(() => {});
+              }
+            } else {
+              if (albertoChannel) {
+                await albertoChannel.send('⏳ *Avvio tunnel Cloudflare isolato (preview porta 3001)... Generazione URL HTTPS...*').catch(() => {});
+              }
+              const resTunnel = await tunnelManager.startTunnel({ broadcastFn: broadcastCallback });
+              if (resTunnel.ok && resTunnel.url) {
+                if (albertoChannel) {
+                  const embedActive = new EmbedBuilder()
+                    .setTitle('🌐 Live Preview Mobile — URL Pubblica HTTPS Attiva!')
+                    .setDescription(`Il tunnel globale Cloudflare è **attivo** per la live preview mobile!\n\n🔗 **URL Pubblica:**\n# [${resTunnel.url}](${resTunnel.url})\n\n📱 *Apri questo link da smartphone o browser esterno per visualizzare il progetto live!*\n⏱️ *Auto-spegnimento di sicurezza dopo 15 minuti.*`)
+                    .setColor(0x2ea043)
+                    .addFields(
+                      { name: 'Porta Isolata Preview', value: `\`${resTunnel.previewPort || 3001}\` (Decoupled)`, inline: true },
+                      { name: 'Auto-Shutdown', value: '15 minuti', inline: true },
+                      { name: 'Richiesto Da', value: `<@${interaction.user.id}>`, inline: true }
+                    )
+                    .setTimestamp();
+                  await albertoChannel.send({ embeds: [embedActive] }).catch(() => {});
+                }
+              } else {
+                if (albertoChannel) {
+                  await albertoChannel.send(`❌ **Errore avvio tunnel Cloudflare:** ${resTunnel.error || 'Impossibile estrarre URL'}`).catch(() => {});
+                }
+              }
+            }
+          } catch (err) {
+            console.warn('[Discord Bot] Errore tunnel_toggle da bottone:', err.message);
+          }
+          break;
+        }
         case 'panel_war_room':
           actionTitle = '⚔️ Avvio Esercitazione War Room (Red Team vs Blue Team)';
           actionInstruction = 'Avvia subito una sessione War Room: Carlo (Red Team) simula attacchi di sicurezza su target, Luigi (Blue Team) risponde e difende.';
