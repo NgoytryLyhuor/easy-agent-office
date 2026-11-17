@@ -979,30 +979,21 @@ function initDiscordBot(onBroadcast) {
             return;
           }
 
-          const tempDir = path.join(__dirname, '.tmp', 'audio');
-          if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-          const tempAudioPath = path.join(tempDir, `voice_${Date.now()}_${crypto.randomBytes(6).toString('hex')}${ext || '.ogg'}`);
+          const audioDir = path.join(__dirname, 'uploads', 'inbound_audio');
+          if (!fs.existsSync(audioDir)) fs.mkdirSync(audioDir, { recursive: true });
+          const safeAudioName = path.basename(attachment.name || (isVoice ? 'voice-message.ogg' : 'audio.ogg')).replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+          const savedAudioPath = path.join(audioDir, `${Date.now()}_${safeAudioName}`);
 
           try {
-            await message.channel.sendTyping().catch(() => {});
-            await downloadAttachment(attachment.url, tempAudioPath, MAX_UPLOAD_SIZE);
-            const audioBuf = fs.readFileSync(tempAudioPath);
-
-            const sttRes = await transcribeAudioWithGemini(audioBuf, mime || 'audio/ogg');
-            if (sttRes.ok && sttRes.text) {
-              const transcribedText = sttRes.text.trim();
-              await message.reply(`🎙️ **Trascrizione vocale (Gemini Flash):**\n> "*${transcribedText}*"`).catch(() => {});
-              finalPrompt = `[Nota Vocale Discord da @${message.author.username}]: "${transcribedText}"${finalPrompt ? `\nTesto allegato: ${finalPrompt}` : ''}`;
-            } else {
-              await message.reply(`⚠️ **Impossibile trascrivere il vocale:** ${sttRes.error}`).catch(() => {});
-              return;
-            }
-          } catch (sttErr) {
-            console.warn('[Discord Bot] Errore STT:', sttErr.message);
-            await message.reply(`❌ **Errore trascrizione vocale:** ${sttErr.message}`).catch(() => {});
+            await downloadAttachment(attachment.url, savedAudioPath, MAX_UPLOAD_SIZE);
+            const normalizedAudioPath = `file:///${savedAudioPath.replace(/\\/g, '/')}`;
+            finalPrompt = `[Nota vocale allegata: ${normalizedAudioPath}] ${finalPrompt || "Ascolta ed elabora la nota vocale allegata."}`;
+            await message.reply(`🎙️ **Nota vocale ricevuta e archiviata:** \`${safeAudioName}\``).catch(() => {});
+          } catch (audioErr) {
+            console.warn('[Discord Bot] Errore salvataggio audio inbound:', audioErr.message);
+            try { if (fs.existsSync(savedAudioPath)) fs.unlinkSync(savedAudioPath); } catch {}
+            await message.reply(`❌ **Errore ricezione nota vocale:** ${audioErr.message}`).catch(() => {});
             return;
-          } finally {
-            try { if (fs.existsSync(tempAudioPath)) fs.unlinkSync(tempAudioPath); } catch {}
           }
           break;
         }
