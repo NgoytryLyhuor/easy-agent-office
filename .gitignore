@@ -11,6 +11,8 @@ bin/
 *.jsonl
 tasks_queue.json
 company-memory.json
+projects_registry.json
+projects.json
 .last_announced_mode
 .tmp/
 uploads/

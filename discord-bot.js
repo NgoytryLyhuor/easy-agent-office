@@ -7,6 +7,8 @@ const path = require('path');
 const os = require('os');
 const { execFile } = require('child_process');
 const routing = require('./routing');
+const memoryEngine = require('./memory-engine');
+const { sanitizePublicText } = memoryEngine;
 const { resolveLanguageServer } = require('./antigravity-path');
 
 const DAEMON_DIR = path.join(os.homedir(), '.gemini', 'antigravity', 'daemon');
@@ -730,6 +732,210 @@ async function ensureControlPanel(guild) {
   }
 }
 
+async function handleProjectCommand(messageOrContext, broadcastFn = null) {
+  const isMessageObj = messageOrContext && typeof messageOrContext.reply === 'function';
+  const author = isMessageObj ? messageOrContext.author : (messageOrContext.author || { username: messageOrContext.username || 'unknown' });
+  const member = isMessageObj ? messageOrContext.member : (messageOrContext.member || null);
+  const guild = isMessageObj ? messageOrContext.guild : (messageOrContext.guild || null);
+  const rawContent = (isMessageObj ? messageOrContext.content : (messageOrContext.content || '')).trim();
+
+  let lastReply = null;
+  const replyFn = async (payload) => {
+    lastReply = payload;
+    if (isMessageObj) {
+      try {
+        return await messageOrContext.reply(payload);
+      } catch {
+        try {
+          return await messageOrContext.channel.send(payload);
+        } catch {
+          return null;
+        }
+      }
+    } else if (typeof messageOrContext.sendReply === 'function') {
+      return await messageOrContext.sendReply(payload);
+    }
+    return payload;
+  };
+
+  // 1. Controllo Rigoroso RBAC
+  const authorized = isUserAuthorized(member || author, guild);
+  if (!authorized) {
+    const errText = '⛔ **Accesso non autorizzato:** Solo **albertoespo** ha i permessi di gestione e switch dei progetti software in AziendaAI.';
+    await replyFn({ content: errText, error: 'UNAUTHORIZED' });
+    return { ok: false, error: 'UNAUTHORIZED', message: errText };
+  }
+
+  const bcast = broadcastFn || broadcastCallback;
+  const arg = rawContent.replace(/^!(project|workspace|progetto)\s*/i, '').trim();
+  const tokens = arg.split(/\s+/).filter(Boolean);
+  const subCommand = (tokens[0] || '').toLowerCase();
+
+  // Sotto-comando: LIST (oppure nessun argomento)
+  if (!arg || subCommand === 'list') {
+    const curPath = routing.getTargetProject();
+    const curName = path.basename(curPath);
+    const list = typeof routing.getProjectsList === 'function' ? routing.getProjectsList() : [];
+
+    const fields = [];
+    const textLines = [];
+
+    list.forEach(p => {
+      const isAct = Boolean(p.isActive || (p.path && p.path.toLowerCase() === curPath.toLowerCase()));
+      const branchBadge = p.branch ? ` 🌿 \`${p.branch}\`` : '';
+      const cleanPath = sanitizePublicText(p.path);
+      const title = `${isAct ? '👉 [ATTIVO] ' : '• '}${p.name}${branchBadge}`;
+      const desc = `ID: \`${p.id}\` | Path: \`${cleanPath}\``;
+      fields.push({ name: title, value: desc, inline: false });
+      textLines.push(`${title}\n  ID: \`${p.id}\` | \`${cleanPath}\``);
+    });
+
+    try {
+      const embed = new EmbedBuilder()
+        .setTitle('🏢 Progetti Software House Registrati')
+        .setDescription(`Workspace attivo: **${sanitizePublicText(curName)}**\nUsa \`!project switch <nome|id>\` oppure \`!project add <nome> <percorso>\`.`)
+        .setColor(0x58a6ff)
+        .setTimestamp();
+      if (fields.length > 0) {
+        embed.addFields(fields);
+      } else {
+        embed.addFields({ name: 'Nessun progetto', value: 'Nessun progetto secondario registrato.' });
+      }
+      await replyFn({ embeds: [embed] });
+    } catch {
+      const fallbackMsg = `🏢 **Progetti Software House Registrati:**\nWorkspace attivo: **${sanitizePublicText(curName)}**\n\n${textLines.join('\n')}\n\n💡 *Usa \`!project switch <nome|id>\` oppure \`!project add <nome> <percorso>\`*`;
+      await replyFn(fallbackMsg);
+    }
+    return { ok: true, action: 'list', count: list.length, current: curName, reply: lastReply };
+  }
+
+  // Sotto-comando: CURRENT
+  if (subCommand === 'current') {
+    const curPath = routing.getTargetProject();
+    const curName = path.basename(curPath);
+    const gitInfo = typeof routing.getGitInfo === 'function' ? routing.getGitInfo(curPath) : { isGit: false, branch: null };
+    const subBrain = typeof memoryEngine.getSubBrainState === 'function' ? memoryEngine.getSubBrainState() : null;
+    const cleanPath = sanitizePublicText(curPath);
+
+    try {
+      const embed = new EmbedBuilder()
+        .setTitle('📍 Progetto Attivo Corrente')
+        .setDescription(`**${sanitizePublicText(curName)}**`)
+        .addFields(
+          { name: '📂 Percorso Sandbox', value: `\`${cleanPath}\``, inline: false },
+          { name: '🌿 Git Branch', value: gitInfo.branch ? `\`${gitInfo.branch}\`` : 'N/D (non un repository git)', inline: true },
+          { name: '🧠 Sub-Brain Isolato', value: subBrain ? `🟢 Attivo (${(subBrain.rules || []).length} regole)` : '⚪ Core Default', inline: true }
+        )
+        .setColor(0x2ea043)
+        .setTimestamp();
+      await replyFn({ embeds: [embed] });
+    } catch {
+      const fallbackMsg = `📍 **Progetto Attivo Corrente:** **${sanitizePublicText(curName)}**\n📂 Percorso: \`${cleanPath}\`\n🌿 Branch: \`${gitInfo.branch || 'N/D'}\`\n🧠 Sub-Brain: ${subBrain ? 'Attivo' : 'Core'}`;
+      await replyFn(fallbackMsg);
+    }
+    return { ok: true, action: 'current', project: curName, path: cleanPath, reply: lastReply };
+  }
+
+  // Sotto-comando: ADD
+  if (subCommand === 'add') {
+    const parts = arg.slice(tokens[0].length).trim().split(/\s+/);
+    const name = parts[0];
+    const pPath = parts.slice(1).join(' ');
+    if (!name || !pPath) {
+      const syntaxMsg = '⚠️ Sintassi corretta: `!project add <NomeProgetto> <PercorsoAssoluto>`';
+      await replyFn(syntaxMsg);
+      return { ok: false, error: 'SYNTAX_ERROR', message: syntaxMsg, reply: lastReply };
+    }
+
+    const res = routing.addProjectToRegistry(name, pPath);
+    if (!res.ok) {
+      const errMsg = `❌ **Errore aggiunta progetto:** ${res.error}`;
+      await replyFn(errMsg);
+      return { ok: false, error: res.error, reply: lastReply };
+    }
+
+    const cleanPath = sanitizePublicText(res.project.path);
+    try {
+      const embed = new EmbedBuilder()
+        .setTitle('🎉 Progetto Aggiunto al Registry!')
+        .setDescription(`Il progetto **${sanitizePublicText(res.project.name)}** è stato registrato ed è pronto.`)
+        .addFields(
+          { name: 'ID Progetto', value: `\`${res.project.id}\``, inline: true },
+          { name: '🌿 Git Branch', value: res.project.branch ? `\`${res.project.branch}\`` : 'N/D', inline: true },
+          { name: '📂 Percorso', value: `\`${cleanPath}\``, inline: false }
+        )
+        .setColor(0x58a6ff)
+        .setTimestamp();
+      await replyFn({ embeds: [embed] });
+    } catch {
+      await replyFn(`🎉 **Progetto "${sanitizePublicText(name)}" aggiunto!**\n📂 Percorso: \`${cleanPath}\``);
+    }
+
+    if (bcast) {
+      bcast({
+        type: 'projectAdded',
+        project: res.project,
+        projects: routing.getProjectsList(),
+        source: `Discord (${author.username || 'user'})`
+      });
+    }
+    return { ok: true, action: 'add', project: res.project, reply: lastReply };
+  }
+
+  // Sotto-comando: SWITCH <target> oppure !project <target>
+  let targetQuery = arg;
+  if (subCommand === 'switch') {
+    targetQuery = arg.slice(tokens[0].length).trim();
+  }
+
+  if (!targetQuery) {
+    const syntaxMsg = '⚠️ Specificare il nome, ID o percorso del progetto da attivare. Esempio: `!project switch MioProgetto`';
+    await replyFn(syntaxMsg);
+    return { ok: false, error: 'EMPTY_TARGET', message: syntaxMsg, reply: lastReply };
+  }
+
+  const switchRes = routing.switchProject(targetQuery);
+  if (!switchRes.ok) {
+    const errMsg = `❌ **Errore cambio progetto:** ${switchRes.error}`;
+    await replyFn(errMsg);
+    return { ok: false, error: switchRes.error, reply: lastReply };
+  }
+
+  const memRes = memoryEngine.switchTargetProject(switchRes.project.path);
+  const cleanPath = sanitizePublicText(switchRes.project.path);
+
+  try {
+    const embed = new EmbedBuilder()
+      .setTitle('🔄 Sandbox Progetto Attivata!')
+      .setDescription(`Tutti gli agenti operano ora sul progetto **${sanitizePublicText(switchRes.project.name)}**.`)
+      .addFields(
+        { name: 'ID', value: `\`${switchRes.project.id}\``, inline: true },
+        { name: '🌿 Branch', value: switchRes.project.branch ? `\`${switchRes.project.branch}\`` : 'N/D', inline: true },
+        { name: '🧠 Sub-Brain', value: memRes.isCore ? '⚪ Core Default' : `🟢 Sub-Brain Isolato (${memRes.rulesCount} regole totali)`, inline: true },
+        { name: '📂 Percorso', value: `\`${cleanPath}\``, inline: false }
+      )
+      .setColor(0x2ea043)
+      .setTimestamp();
+    await replyFn({ embeds: [embed] });
+  } catch {
+    await replyFn(`✅ **Progetto Target aggiornato!**\n📂 Ora il team lavora su **${sanitizePublicText(switchRes.project.name)}**: \`${cleanPath}\``);
+  }
+
+  if (bcast) {
+    bcast({
+      type: 'targetProjectChanged',
+      project: switchRes.project,
+      projectPath: switchRes.project.path,
+      projectName: switchRes.project.name,
+      projects: routing.getProjectsList(),
+      subBrain: memRes,
+      source: `Discord (${author.username || 'user'})`
+    });
+  }
+
+  return { ok: true, action: 'switch', project: switchRes.project, subBrain: memRes, reply: lastReply };
+}
+
 function initDiscordBot(onBroadcast) {
   broadcastCallback = onBroadcast;
 
@@ -822,42 +1028,7 @@ function initDiscordBot(onBroadcast) {
       return;
     }
     if (content.toLowerCase().startsWith('!project') || content.toLowerCase().startsWith('!workspace') || content.toLowerCase().startsWith('!progetto')) {
-      const arg = content.replace(/^!(project|workspace|progetto)\s*/i, '').trim();
-      if (!arg || arg.toLowerCase() === 'list') {
-        const cur = routing.getTargetProject();
-        const list = typeof routing.getProjectsList === 'function' ? routing.getProjectsList() : [];
-        let listStr = list.map(p => (p.isActive ? '👉 **[ATTIVO]** ' : '• ') + '**' + p.name + '**: `' + p.path + '`').join('\n');
-        await message.channel.send('🏢 **Progetti Software House Registrati:**\n' + (listStr || 'Nessuno') + '\n\n💡 *Usa `!project <nome o percorso>` oppure `!project add <nome> <percorso>`*').catch(() => {});
-        return;
-      }
-      if (arg.toLowerCase().startsWith('add ')) {
-        const parts = arg.slice(4).trim().split(/\s+/);
-        const name = parts[0];
-        const pPath = parts.slice(1).join(' ');
-        if (!name || !pPath) {
-          await message.channel.send('⚠️ Sintassi corretta: `!project add <NomeProgetto> <PercorsoAssoluto>`').catch(() => {});
-          return;
-        }
-        const res = routing.addProjectToRegistry(name, pPath);
-        if (!res.ok) {
-          await message.channel.send('❌ **Errore aggiunta progetto:** ' + res.error).catch(() => {});
-          return;
-        }
-        await message.channel.send('🎉 **Progetto "' + name + '" aggiunto e attivato!**\n📂 Percorso: `' + res.projectPath + '`').catch(() => {});
-        if (broadcastCallback) {
-          broadcastCallback({ type: 'targetProjectChanged', projectPath: res.projectPath, projectName: res.projectName, projects: routing.getProjectsList(), source: 'Discord (' + message.author.username + ')' });
-        }
-        return;
-      }
-      const res = typeof routing.selectProjectByNameOrPath === 'function' ? routing.selectProjectByNameOrPath(arg) : routing.setTargetProject(arg);
-      if (!res.ok) {
-        await message.channel.send('❌ **Errore cambio progetto:** ' + res.error).catch(() => {});
-        return;
-      }
-      await message.channel.send('✅ **Progetto Target aggiornato!**\n📂 Ora il team lavora su: `' + res.projectPath + '`').catch(() => {});
-      if (broadcastCallback) {
-        broadcastCallback({ type: 'targetProjectChanged', projectPath: res.projectPath, projectName: res.projectName, projects: typeof routing.getProjectsList === 'function' ? routing.getProjectsList() : [], source: 'Discord (' + message.author.username + ')' });
-      }
+      await handleProjectCommand(message, broadcastCallback);
       return;
     }
 
@@ -1637,5 +1808,6 @@ module.exports = {
   ALLOWED_DOC_MIMES,
   validateInboundDocument,
   formatInboundDocumentPrompt,
+  handleProjectCommand,
   getClient: () => client
 };

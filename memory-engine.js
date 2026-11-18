@@ -60,6 +60,141 @@ let memoryState = null;
 let cachedNeuralGraph = null;
 let cachedNeuralGraphTime = 0;
 
+// Sub-Brain Isolation State (Innovazione #5)
+let currentProjectPath = path.resolve(__dirname);
+let currentProjectSlug = 'azienda-ai';
+let subBrainState = null;
+
+function slugify(name) {
+  return String(name || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '') || 'project';
+}
+
+function getSubBrainFilePath(projPath) {
+  const primary = path.join(projPath, '.agents', 'knowledge', 'company-memory.json');
+  const fallback = path.join(projPath, '.project-memory.json');
+  if (fs.existsSync(primary)) return primary;
+  if (fs.existsSync(fallback)) return fallback;
+  return primary;
+}
+
+function createEmptySubBrain(projPath) {
+  const now = new Date().toISOString();
+  const projName = path.basename(projPath);
+  return {
+    version: 1,
+    createdAt: now,
+    updatedAt: now,
+    project: projName,
+    projectSlug: slugify(projName),
+    rules: [],
+    preferences: [],
+    facts: []
+  };
+}
+
+function loadSubBrain(projPath) {
+  const filePath = getSubBrainFilePath(projPath);
+  if (fs.existsSync(filePath)) {
+    try {
+      const raw = fs.readFileSync(filePath, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        if (isPolluted(parsed)) {
+          console.warn('[Memory Engine] Sub-brain file contaminato da prototype pollution, ignorato:', filePath);
+          subBrainState = createEmptySubBrain(projPath);
+          return;
+        }
+        subBrainState = {
+          version: parsed.version || 1,
+          createdAt: parsed.createdAt || new Date().toISOString(),
+          updatedAt: parsed.updatedAt || new Date().toISOString(),
+          project: path.basename(projPath),
+          projectSlug: slugify(path.basename(projPath)),
+          rules: Array.isArray(parsed.rules) ? parsed.rules.filter(r => !scanForLeaks(r) && !isPolluted(r)) : [],
+          preferences: Array.isArray(parsed.preferences) ? parsed.preferences : [],
+          facts: Array.isArray(parsed.facts) ? parsed.facts : []
+        };
+        return;
+      }
+    } catch (err) {
+      console.warn('[Memory Engine] Errore lettura sub-brain:', err.message);
+    }
+  }
+  subBrainState = createEmptySubBrain(projPath);
+}
+
+function persistSubBrainAtomic(projPath) {
+  if (!subBrainState) return true;
+  const filePath = getSubBrainFilePath(projPath);
+  const tmpPath = filePath + '.tmp';
+  try {
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(tmpPath, JSON.stringify(subBrainState, null, 2), 'utf8');
+    try {
+      fs.renameSync(tmpPath, filePath);
+    } catch {
+      fs.copyFileSync(tmpPath, filePath);
+      try { fs.unlinkSync(tmpPath); } catch {}
+    }
+    return true;
+  } catch (err) {
+    console.error('[Memory Engine] Errore persistenza sub-brain:', err.message);
+    return false;
+  }
+}
+
+function switchTargetProject(newPath) {
+  const resolved = path.resolve(newPath || __dirname);
+  currentProjectPath = resolved;
+  const isCore = resolved.toLowerCase() === path.resolve(__dirname).toLowerCase();
+  const projName = path.basename(resolved);
+  currentProjectSlug = isCore ? 'azienda-ai' : slugify(projName);
+
+  if (isCore) {
+    subBrainState = null;
+  } else {
+    loadSubBrain(resolved);
+  }
+
+  invalidateNeuralCache();
+  return {
+    ok: true,
+    projectPath: resolved,
+    projectName: projName,
+    projectSlug: currentProjectSlug,
+    isCore,
+    rulesCount: getMergedRules().length
+  };
+}
+
+function getMergedRules() {
+  if (!memoryState) loadMemory();
+  const coreRules = (memoryState.rules || []).map(r => ({
+    ...r,
+    project: 'core',
+    projectSlug: 'core',
+    isCore: true
+  }));
+
+  if (!subBrainState || !Array.isArray(subBrainState.rules) || subBrainState.rules.length === 0) {
+    return coreRules;
+  }
+
+  const subRules = subBrainState.rules.map(r => ({
+    ...r,
+    project: subBrainState.project || currentProjectSlug,
+    projectSlug: currentProjectSlug,
+    isCore: false
+  }));
+
+  return [...coreRules, ...subRules];
+}
+
 function invalidateNeuralCache() {
   cachedNeuralGraph = null;
   cachedNeuralGraphTime = 0;
@@ -362,15 +497,24 @@ function init({ broadcastFn } = {}) {
 
 function getMemory() {
   if (!memoryState) loadMemory();
+  const mergedRules = getMergedRules();
+  const subPrefs = (subBrainState && Array.isArray(subBrainState.preferences)) ? subBrainState.preferences : [];
+  const subFacts = (subBrainState && Array.isArray(subBrainState.facts)) ? subBrainState.facts : [];
   return {
     version: memoryState.version,
     updatedAt: memoryState.updatedAt,
-    rules: [...memoryState.rules],
-    preferences: [...memoryState.preferences],
-    feedback: [...memoryState.feedback],
-    patterns: [...memoryState.patterns],
-    facts: [...memoryState.facts],
-    customTools: [...memoryState.customTools],
+    activeProject: path.basename(currentProjectPath),
+    projectPath: currentProjectPath,
+    projectSlug: currentProjectSlug,
+    isSubBrainActive: Boolean(subBrainState),
+    coreRulesCount: (memoryState.rules || []).length,
+    subBrainRulesCount: subBrainState ? (subBrainState.rules || []).length : 0,
+    rules: mergedRules,
+    preferences: [...(memoryState.preferences || []), ...subPrefs],
+    feedback: [...(memoryState.feedback || [])],
+    patterns: [...(memoryState.patterns || [])],
+    facts: [...(memoryState.facts || []), ...subFacts],
+    customTools: [...(memoryState.customTools || [])],
     skillGraph: getSkillGraph()
   };
 }
@@ -389,7 +533,7 @@ function getSkillGraph() {
   };
 }
 
-function learnFact(category, key, value, source = 'system') {
+function learnFact(category, key, value, source = 'system', targetProject = null) {
   if (!memoryState) loadMemory();
 
   // 1. Anti-Prototype Pollution
@@ -431,22 +575,29 @@ function learnFact(category, key, value, source = 'system') {
     targetBucket = 'patterns';
   }
 
-  if (!Array.isArray(memoryState[targetBucket])) {
-    memoryState[targetBucket] = [];
+  const isSubBrain = Boolean(targetProject || (currentProjectPath && currentProjectPath.toLowerCase() !== path.resolve(__dirname).toLowerCase()));
+  const targetState = isSubBrain ? (subBrainState || createEmptySubBrain(targetProject || currentProjectPath)) : memoryState;
+  if (isSubBrain && !subBrainState) subBrainState = targetState;
+
+  if (!Array.isArray(targetState[targetBucket])) {
+    targetState[targetBucket] = [];
   }
 
-  const existingIdx = memoryState[targetBucket].findIndex(item => item.key === key);
+  const existingIdx = targetState[targetBucket].findIndex(item => item.key === key);
   const now = new Date().toISOString();
 
   let factObj;
   if (existingIdx >= 0) {
     factObj = {
-      ...memoryState[targetBucket][existingIdx],
+      ...targetState[targetBucket][existingIdx],
       value: typeof value === 'object' ? value : String(value),
       source: String(source || 'system').trim(),
-      timestamp: now
+      timestamp: now,
+      project: isSubBrain ? (targetState.project || currentProjectSlug) : 'core',
+      projectSlug: isSubBrain ? currentProjectSlug : 'core',
+      isCore: !isSubBrain
     };
-    memoryState[targetBucket][existingIdx] = factObj;
+    targetState[targetBucket][existingIdx] = factObj;
   } else {
     factObj = {
       id: `${targetBucket}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -454,22 +605,34 @@ function learnFact(category, key, value, source = 'system') {
       key,
       value: typeof value === 'object' ? value : String(value),
       source: String(source || 'system').trim(),
-      timestamp: now
+      timestamp: now,
+      project: isSubBrain ? (targetState.project || currentProjectSlug) : 'core',
+      projectSlug: isSubBrain ? currentProjectSlug : 'core',
+      isCore: !isSubBrain
     };
-    memoryState[targetBucket].push(factObj);
+    targetState[targetBucket].push(factObj);
   }
 
-  memoryState.updatedAt = now;
-  persistMemoryAtomic();
+  targetState.updatedAt = now;
+
+  if (isSubBrain) {
+    persistSubBrainAtomic(targetProject || currentProjectPath);
+  } else {
+    persistMemoryAtomic();
+  }
+
+  invalidateNeuralCache();
 
   notifyBroadcast('factLearned', {
     targetBucket,
     fact: factObj,
+    isSubBrain,
+    project: factObj.project,
     memory: getMemory(),
     skillGraph: getSkillGraph()
   });
 
-  return { ok: true, fact: factObj, targetBucket };
+  return { ok: true, fact: factObj, targetBucket, isSubBrain, project: factObj.project };
 }
 
 function registerCustomTool(toolName, code, description, options = {}) {
@@ -726,7 +889,7 @@ function getNeuralGraph() {
   });
 
   // 4. Regole Operative (Emisfero Sinistro - Logica & Rigore)
-  const rules = memoryState.rules || [];
+  const rules = getMergedRules();
   rules.forEach(r => {
     const u1 = hashStringToUnit(r.key || r.id, 41);
     const u2 = hashStringToUnit(r.key || r.id, 53);
@@ -736,7 +899,8 @@ function getNeuralGraph() {
     const y = (u2 - 0.5) * 85;
     const z = (u3 - 0.5) * 65;
 
-    const ruleNodeId = `rule:${r.key || r.id}`;
+    const ruleNodeId = `rule:${r.projectSlug || 'core'}:${r.key || r.id}`;
+    const isCoreRule = r.isCore !== false;
     nodes.push({
       id: ruleNodeId,
       label: sanitizePublicText(r.key),
@@ -746,13 +910,16 @@ function getNeuralGraph() {
       hemisphere: 'left',
       position: { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)), z: Number(z.toFixed(2)) },
       size: 8,
-      color: '#3fb950',
-      emissive: '#56d364',
+      color: isCoreRule ? '#3fb950' : '#e3b341',
+      emissive: isCoreRule ? '#56d364' : '#d29922',
       emissiveIntensity: 0.8,
       pulseSpeed: 1.0,
       weight: 2.8,
       activity: 0.75,
-      source: sanitizePublicText(r.source)
+      source: sanitizePublicText(r.source),
+      project: r.project || 'core',
+      projectSlug: r.projectSlug || 'core',
+      isCore: isCoreRule
     });
 
     const targetAgent = (r.source && r.source.includes('Carlo')) ? 'agent:8' : 'agent:6';
@@ -763,7 +930,7 @@ function getNeuralGraph() {
       type: 'reinforced',
       synapticStrength: 0.75,
       pulseSpeed: 0.9,
-      color: '#3fb950',
+      color: isCoreRule ? '#3fb950' : '#e3b341',
       pulsing: true
     });
   });
@@ -866,6 +1033,10 @@ function getNeuralGraph() {
   const result = {
     ok: true,
     model: 'The Living Brain 3D (Dual-Hemisphere Neural Topology)',
+    activeProject: path.basename(currentProjectPath),
+    projectPath: currentProjectPath,
+    projectSlug: currentProjectSlug,
+    isSubBrainActive: Boolean(subBrainState),
     nodes: boundedNodes,
     synapses: boundedSynapses,
     totalNodes: boundedNodes.length,
@@ -1008,5 +1179,12 @@ module.exports = {
   KEY_REGEX,
   buildInitialSkillGraph,
   MEMORY_FILE,
-  EXAMPLE_MEMORY_FILE
+  EXAMPLE_MEMORY_FILE,
+  // Innovazione #5 Multi-Project Sandbox Switcher & Sub-Brain Isolation
+  switchTargetProject,
+  getSubBrainFilePath,
+  getCurrentProjectPath: () => currentProjectPath,
+  getCurrentProjectSlug: () => currentProjectSlug,
+  getSubBrainState: () => subBrainState,
+  getMergedRules
 };

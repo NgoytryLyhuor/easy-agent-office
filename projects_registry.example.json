@@ -1,0 +1,11 @@
+[
+  {
+    "id": "aziendaai",
+    "name": "AziendaAI",
+    "path": ".",
+    "branch": "main",
+    "isGit": true,
+    "lastActive": "2026-11-18T00:00:00.000Z",
+    "isDefault": true
+  }
+]

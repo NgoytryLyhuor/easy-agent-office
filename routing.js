@@ -60,54 +60,60 @@ function getTargetProject() {
   return state.targetProject || path.resolve(__dirname);
 }
 
+function validateProjectPath(newPath) {
+  const cleaned = String(newPath || '').trim().replace(/^["']|["']$/g, '');
+  if (!cleaned) return { ok: false, error: 'Percorso vuoto' };
+  if (cleaned.includes('\0')) return { ok: false, error: 'Caratteri non validi (null byte) nel percorso' };
+
+  const resolved = path.resolve(cleaned);
+  const parsed = path.parse(resolved);
+
+  // Confinamento / Anti-Traversal: impedisce di impostare la root del filesystem come target
+  if (resolved.toLowerCase() === parsed.root.toLowerCase()) {
+    return { ok: false, error: 'Impossibile selezionare la directory radice come cartella di progetto' };
+  }
+
+  // Protezione percorsi di sistema critici (Windows / Linux / macOS)
+  const isWin = process.platform === 'win32';
+  // Windows e macOS usano di default filesystem case-insensitive (/ETC == /etc)
+  const caseInsensitive = isWin || process.platform === 'darwin';
+  const norm = p => caseInsensitive ? p.toLowerCase() : p;
+  const cmp = norm(resolved);
+  const forbidden = isWin ? [
+    'c:\\windows',
+    'c:\\program files',
+    'c:\\program files (x86)',
+    'c:\\programdata',
+    'c:\\recovery',
+    'c:\\$recycle.bin',
+    'c:\\system volume information'
+  ] : [
+    '/bin', '/boot', '/dev', '/etc', '/lib', '/lib32', '/lib64', '/libx32',
+    '/proc', '/root', '/sbin', '/sys', '/usr',
+    '/System', '/Library', '/private'
+  ];
+  if (forbidden.map(norm).some(f => cmp === f || cmp.startsWith(f + path.sep))) {
+    return { ok: false, error: 'Accesso negato: directory di sistema protetta' };
+  }
+
+  if (!fs.existsSync(resolved)) {
+    return { ok: false, error: `Cartella non trovata: ${resolved}` };
+  }
+
+  const stat = fs.statSync(resolved);
+  if (!stat.isDirectory()) {
+    return { ok: false, error: `Il percorso specificato non è una directory: ${resolved}` };
+  }
+
+  return { ok: true, projectPath: resolved, projectName: path.basename(resolved) };
+}
+
 function setTargetProject(newPath) {
   try {
-    const cleaned = String(newPath || '').trim().replace(/^["']|["']$/g, '');
-    if (!cleaned) return { ok: false, error: 'Percorso vuoto' };
-    if (cleaned.includes('\0')) return { ok: false, error: 'Caratteri non validi nel percorso' };
-
-    const resolved = path.resolve(cleaned);
-    const parsed = path.parse(resolved);
-
-    // Confinamento / Anti-Traversal: impedisce di impostare la root del filesystem come target
-    if (resolved.toLowerCase() === parsed.root.toLowerCase()) {
-      return { ok: false, error: 'Impossibile selezionare la directory radice come cartella di progetto' };
-    }
-
-    // Protezione percorsi di sistema critici (Windows / Linux / macOS)
-    const isWin = process.platform === 'win32';
-    // Windows e macOS usano di default filesystem case-insensitive (/ETC == /etc)
-    const caseInsensitive = isWin || process.platform === 'darwin';
-    const norm = p => caseInsensitive ? p.toLowerCase() : p;
-    const cmp = norm(resolved);
-    const forbidden = isWin ? [
-      'c:\\windows',
-      'c:\\program files',
-      'c:\\program files (x86)',
-      'c:\\programdata',
-      'c:\\recovery',
-      'c:\\$recycle.bin',
-      'c:\\system volume information'
-    ] : [
-      '/bin', '/boot', '/dev', '/etc', '/lib', '/lib32', '/lib64', '/libx32',
-      '/proc', '/root', '/sbin', '/sys', '/usr',
-      '/System', '/Library', '/private'
-    ];
-    if (forbidden.map(norm).some(f => cmp === f || cmp.startsWith(f + path.sep))) {
-      return { ok: false, error: 'Accesso negato: directory di sistema protetta' };
-    }
-
-    if (!fs.existsSync(resolved)) {
-      return { ok: false, error: `Cartella non trovata: ${resolved}` };
-    }
-
-    const stat = fs.statSync(resolved);
-    if (!stat.isDirectory()) {
-      return { ok: false, error: `Il percorso specificato non è una directory: ${resolved}` };
-    }
-
-    state.targetProject = resolved;
-    return { ok: true, projectPath: resolved, projectName: path.basename(resolved) };
+    const val = validateProjectPath(newPath);
+    if (!val.ok) return val;
+    state.targetProject = val.projectPath;
+    return val;
   } catch (err) {
     return { ok: false, error: `Errore validazione percorso: ${err.message}` };
   }
@@ -189,23 +195,94 @@ function allSessionsMap() {
   return m;
 }
 
-const PROJECTS_FILE = path.join(__dirname, 'projects.json');
+// ====================================================================
+// REGISTRO PROGETTI & MULTI-PROJECT SANDBOX (INNOVAZIONE #5)
+// ====================================================================
+const REGISTRY_FILE = path.join(__dirname, 'projects_registry.json');
+const EXAMPLE_REGISTRY_FILE = path.join(__dirname, 'projects_registry.example.json');
+const LEGACY_PROJECTS_FILE = path.join(__dirname, 'projects.json');
+
+function slugify(name) {
+  return String(name || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '') || 'project';
+}
+
+function getGitInfo(projPath) {
+  try {
+    const gitDir = path.join(projPath, '.git');
+    if (!fs.existsSync(gitDir)) return { isGit: false, branch: null };
+    const headFile = path.join(gitDir, 'HEAD');
+    if (fs.existsSync(headFile)) {
+      const head = fs.readFileSync(headFile, 'utf8').trim();
+      const branch = head.startsWith('ref: refs/heads/')
+        ? head.replace('ref: refs/heads/', '')
+        : (head.slice(0, 8) || 'detached');
+      return { isGit: true, branch };
+    }
+    return { isGit: true, branch: 'unknown' };
+  } catch {
+    return { isGit: false, branch: null };
+  }
+}
 
 function loadProjectsRegistry() {
+  let rawList = [];
   try {
-    if (fs.existsSync(PROJECTS_FILE)) {
-      const data = JSON.parse(fs.readFileSync(PROJECTS_FILE, 'utf8'));
-      if (Array.isArray(data)) return data;
+    if (fs.existsSync(REGISTRY_FILE)) {
+      const data = JSON.parse(fs.readFileSync(REGISTRY_FILE, 'utf8'));
+      if (Array.isArray(data)) rawList = data;
+    } else if (fs.existsSync(LEGACY_PROJECTS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(LEGACY_PROJECTS_FILE, 'utf8'));
+      if (Array.isArray(data)) rawList = data;
+    } else if (fs.existsSync(EXAMPLE_REGISTRY_FILE)) {
+      const data = JSON.parse(fs.readFileSync(EXAMPLE_REGISTRY_FILE, 'utf8'));
+      if (Array.isArray(data)) rawList = data;
     }
   } catch (_) {}
-  return [
-    { name: 'AziendaAI', path: path.resolve(__dirname), isDefault: true, addedAt: new Date().toISOString() }
-  ];
+
+  if (rawList.length === 0) {
+    const rootPath = path.resolve(__dirname);
+    const git = getGitInfo(rootPath);
+    rawList = [
+      {
+        id: 'azienda-ai',
+        name: 'AziendaAI',
+        path: rootPath,
+        branch: git.branch,
+        isGit: git.isGit,
+        lastActive: new Date().toISOString(),
+        isDefault: true
+      }
+    ];
+    saveProjectsRegistry(rawList);
+  }
+
+  // Normalizza e rinfresca metadati puliti { id, name, path, branch, isGit, lastActive, isDefault }
+  return rawList.map(p => {
+    const resolvedPath = path.resolve(p.path);
+    const git = getGitInfo(resolvedPath);
+    const projName = p.name || path.basename(resolvedPath) || 'Progetto';
+    return {
+      id: p.id || slugify(projName),
+      name: projName,
+      path: resolvedPath,
+      branch: git.branch,
+      isGit: git.isGit,
+      lastActive: p.lastActive || new Date().toISOString(),
+      isDefault: Boolean(p.isDefault || resolvedPath.toLowerCase() === path.resolve(__dirname).toLowerCase())
+    };
+  });
 }
 
 function saveProjectsRegistry(list) {
   try {
-    fs.writeFileSync(PROJECTS_FILE, JSON.stringify(list, null, 2), 'utf8');
+    const cleanJson = JSON.stringify(list, null, 2);
+    fs.writeFileSync(REGISTRY_FILE, cleanJson, 'utf8');
+    // Mantiene allineato anche il legacy file
+    try { fs.writeFileSync(LEGACY_PROJECTS_FILE, cleanJson, 'utf8'); } catch (_) {}
     return true;
   } catch (_) {
     return false;
@@ -222,36 +299,93 @@ function getProjectsList() {
 }
 
 function addProjectToRegistry(name, rawPath) {
-  const res = setTargetProject(rawPath);
-  if (!res.ok) return res;
+  const val = validateProjectPath(rawPath);
+  if (!val.ok) return val;
+  const projPath = val.projectPath;
   const list = loadProjectsRegistry();
-  const projPath = res.projectPath;
-  const rawName = String(name || res.projectName).trim();
+  const rawName = String(name || val.projectName).trim();
   const projName = rawName.slice(0, 64).replace(/[^\p{L}\p{N}\s\-_.]/gu, '').trim() || 'Progetto';
+  const git = getGitInfo(projPath);
   const existingIdx = list.findIndex(p => path.resolve(p.path).toLowerCase() === projPath.toLowerCase());
+
+  const projMeta = {
+    id: slugify(projName),
+    name: projName,
+    path: projPath,
+    branch: git.branch,
+    isGit: git.isGit,
+    lastActive: new Date().toISOString(),
+    isDefault: projPath.toLowerCase() === path.resolve(__dirname).toLowerCase()
+  };
+
   if (existingIdx >= 0) {
-    list[existingIdx].name = projName;
+    list[existingIdx] = { ...list[existingIdx], ...projMeta };
   } else {
-    list.push({ name: projName, path: projPath, addedAt: new Date().toISOString() });
+    list.push(projMeta);
   }
+
+  state.targetProject = projPath;
   saveProjectsRegistry(list);
-  return { ok: true, projectPath: projPath, projectName: projName, list: getProjectsList() };
+  return {
+    ok: true,
+    projectPath: projPath,
+    projectName: projName,
+    project: { ...projMeta, isActive: true },
+    list: getProjectsList()
+  };
+}
+
+function switchProject(query) {
+  if (!query) return { ok: false, error: 'Identificatore progetto o percorso mancante' };
+  const q = String(query).trim().toLowerCase();
+  const list = loadProjectsRegistry();
+
+  // 1. Cerca per id esatto, nome case-insensitive, o percorso assoluto
+  const found = list.find(p =>
+    (p.id && p.id.toLowerCase() === q) ||
+    (p.name && p.name.toLowerCase() === q) ||
+    (path.resolve(p.path).toLowerCase() === q) ||
+    (path.resolve(p.path).toLowerCase() === path.resolve(query).toLowerCase())
+  );
+
+  if (found) {
+    const val = validateProjectPath(found.path);
+    if (!val.ok) return val;
+    found.lastActive = new Date().toISOString();
+    const git = getGitInfo(found.path);
+    found.branch = git.branch;
+    found.isGit = git.isGit;
+    state.targetProject = found.path;
+    saveProjectsRegistry(list);
+    return {
+      ok: true,
+      projectPath: found.path,
+      projectName: found.name,
+      project: { ...found, isActive: true },
+      list: getProjectsList()
+    };
+  }
+
+  // 2. Se non presente nel registro, tenta validazione come nuovo percorso
+  const val = validateProjectPath(query);
+  if (!val.ok) {
+    return { ok: false, error: `Progetto '${query}' non trovato nel registro e percorso non valido: ${val.error}` };
+  }
+
+  return addProjectToRegistry(val.projectName, val.projectPath);
 }
 
 function selectProjectByNameOrPath(query) {
-  const q = String(query || '').trim().toLowerCase();
-  const list = loadProjectsRegistry();
-  const found = list.find(p => p.name.toLowerCase() === q || path.resolve(p.path).toLowerCase() === q);
-  if (found) {
-    return setTargetProject(found.path);
-  }
-  return setTargetProject(query);
+  return switchProject(query);
 }
 
 module.exports = {
   getProjectsList,
   addProjectToRegistry,
+  switchProject,
   selectProjectByNameOrPath,
+  validateProjectPath,
+  getGitInfo,
   updateMode,
   getMode,
   isResting,
@@ -267,5 +401,6 @@ module.exports = {
   resolveSubagent,
   getLastDiskMode: () => state.lastDiskMode,
   setLastDiskMode: (m) => { state.lastDiskMode = m; },
-  allSessionsMap
+  allSessionsMap,
+  REGISTRY_FILE
 };

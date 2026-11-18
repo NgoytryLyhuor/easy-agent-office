@@ -1377,16 +1377,22 @@ wss.on('connection', (ws, req) => {
           time: new Date().toLocaleTimeString()
         });
       } else if (data.type === 'setTargetProject') {
-        const res = routing.setTargetProject(data.projectPath);
-        if (res.ok) {
+        const switchRes = (data.name || data.id) 
+          ? routing.switchProject(data.name || data.id)
+          : routing.switchProject(data.projectPath);
+        if (switchRes.ok) {
+          const memRes = memoryEngine.switchTargetProject(switchRes.project.path);
           broadcast({
             type: 'targetProjectChanged',
-            projectPath: res.projectPath,
-            projectName: res.projectName,
+            project: switchRes.project,
+            projectPath: switchRes.project.path,
+            projectName: switchRes.project.name,
+            projects: routing.getProjectsList(),
+            subBrain: memRes,
             source: 'Web Dashboard'
           });
         } else {
-          ws.send(JSON.stringify({ type: 'targetProjectError', error: res.error }));
+          ws.send(JSON.stringify({ type: 'targetProjectError', error: switchRes.error }));
         }
       } else if (data.type === 'requestPermission') {
         const targetId = Number(data.agentId || data.id) || 10;
@@ -1505,20 +1511,89 @@ app.get('/api/project', (req, res) => {
   res.json({ projectPath: cur, projectName: path.basename(cur), projects: routing.getProjectsList() });
 });
 
-app.post('/api/project', (req, res) => {
-  const { projectPath, projectName } = req.body || {};
-  const result = projectName ? routing.addProjectToRegistry(projectName, projectPath) : routing.setTargetProject(projectPath);
-  if (!result.ok) {
-    return res.status(400).json({ ok: false, error: result.error });
+app.get('/api/projects/registry', (req, res) => {
+  const cur = routing.getTargetProject();
+  res.json({
+    ok: true,
+    currentProject: cur,
+    currentProjectName: path.basename(cur),
+    projects: routing.getProjectsList()
+  });
+});
+
+app.post('/api/projects/switch', (req, res) => {
+  const { path: pPath, id, name, query } = req.body || {};
+  const target = pPath || id || name || query;
+  if (!target) {
+    return res.status(400).json({ ok: false, error: 'Parametro mancante: specificare path, id o name del progetto' });
   }
+  const switchRes = routing.switchProject(target);
+  if (!switchRes.ok) {
+    return res.status(400).json({ ok: false, error: switchRes.error });
+  }
+  const memRes = memoryEngine.switchTargetProject(switchRes.project.path);
   broadcast({
     type: 'targetProjectChanged',
-    projectPath: result.projectPath,
-    projectName: result.projectName,
+    project: switchRes.project,
+    projectPath: switchRes.project.path,
+    projectName: switchRes.project.name,
+    projects: routing.getProjectsList(),
+    subBrain: memRes,
+    source: 'REST API'
+  });
+  res.json({
+    ok: true,
+    project: switchRes.project,
+    subBrain: memRes,
+    projects: routing.getProjectsList()
+  });
+});
+
+app.post('/api/projects/add', (req, res) => {
+  const { name, path: pPath } = req.body || {};
+  if (!name || !pPath) {
+    return res.status(400).json({ ok: false, error: 'Parametri obbligatori: name e path' });
+  }
+  const addRes = routing.addProjectToRegistry(name, pPath);
+  if (!addRes.ok) {
+    return res.status(400).json({ ok: false, error: addRes.error });
+  }
+  broadcast({
+    type: 'projectAdded',
+    project: addRes.project,
     projects: routing.getProjectsList(),
     source: 'REST API'
   });
-  res.json({ ...result, projects: routing.getProjectsList() });
+  res.json({
+    ok: true,
+    project: addRes.project,
+    projects: routing.getProjectsList()
+  });
+});
+
+app.post('/api/project', (req, res) => {
+  const { projectPath, projectName } = req.body || {};
+  let result;
+  if (projectName && projectPath) {
+    result = routing.addProjectToRegistry(projectName, projectPath);
+  } else {
+    result = routing.switchProject(projectPath || projectName);
+  }
+  if (!result.ok) {
+    return res.status(400).json({ ok: false, error: result.error });
+  }
+  const currentPath = result.project ? result.project.path : (result.projectPath || routing.getTargetProject());
+  const memRes = memoryEngine.switchTargetProject(currentPath);
+  broadcast({
+    type: 'targetProjectChanged',
+    project: result.project || { path: currentPath, name: path.basename(currentPath) },
+    projectPath: currentPath,
+    projectName: result.projectName || path.basename(currentPath),
+    projects: routing.getProjectsList(),
+    subBrain: memRes,
+    source: 'REST API'
+  });
+  res.json({ ...result, subBrain: memRes, projects: routing.getProjectsList() });
 });
 
 

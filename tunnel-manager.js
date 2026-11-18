@@ -84,6 +84,7 @@ const TUNNEL_SAFE_API_WHITELIST = new Set([
   '/api/memory/skills',
   '/api/tasks/queue',
   '/api/project',
+  '/api/projects/registry',
   '/api/digest/status',
   '/api/war-room/status',
   '/api/tunnel/status',
