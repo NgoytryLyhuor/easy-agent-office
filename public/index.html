@@ -795,6 +795,10 @@
           max-width: none !important;
           width: auto !important;
         }
+        #topbar-tte-btn {
+          padding: 6px 8px !important;
+          flex-shrink: 0 !important;
+        }
         .topbar-btn-text {
           display: none !important;
         }
@@ -917,6 +921,13 @@
           padding: 6px 10px !important;
           font-size: 0.72rem !important;
         }
+        #topbar-tte-btn {
+          padding: 5px 6px !important;
+          font-size: 0.68rem !important;
+        }
+        #topbar-tte-val {
+          font-size: 0.68rem !important;
+        }
 
         /* Drawer a pieno schermo su smartphone */
         #agent-drawer {
@@ -1035,6 +1046,13 @@
             <div id="quick-project-list" style="display:flex; flex-direction:column; gap:4px; max-height:220px; overflow-y:auto; padding-right:2px;"></div>
           </div>
         </div>
+        <!-- TOPBAR PREDICTIVE TTE BADGE (INNOVAZIONE #3) -->
+        <button id="topbar-tte-btn" class="topbar-btn" onclick="openDrawerForSelectedAgent()" title="Autonomia Residua & Burnout Predittivo (Idea #3)" style="background:#21262d; color:#58a6ff; border:1px solid #30363d; border-radius:6px; padding:5px 9px; font-size:0.73rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px;">
+          <span>⏱️</span>
+          <span id="label-topbar-tte" class="topbar-btn-text">Autonomia:</span>
+          <span id="topbar-tte-val" style="color:#f0f6fc; font-family:Consolas,monospace;">~4h 15m</span>
+          <span id="topbar-burn-rate-dot" style="width:7px; height:7px; border-radius:50%; background:#3fb950; display:inline-block;" title="Burn-Rate: Lento"></span>
+        </button>
         <button id="sound-toggle-btn" class="topbar-btn" onclick="toggleRetroSound()" title="Effetti Sonori 8-Bit / 8-Bit Sound Effects" style="background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:5px 9px; font-size:0.78rem; font-weight:700; cursor:pointer;">🔊</button>
         <button id="lang-toggle-btn" class="topbar-btn" onclick="toggleAppLang()" style="background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer;">🇮🇹 IT</button>
       </div>
@@ -1124,6 +1142,54 @@
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span id="label-argon-quota" style="color:#8b949e;">⚡ Quota Gemini Argon (Sett.):</span>
               <strong id="global-argon-quota" style="color:#e3b341;">--</strong>
+            </div>
+          </div>
+
+          <!-- INNOVAZIONE #3: WIDGET AUTONOMIA RESIDUA & BURNOUT PREDITTIVO -->
+          <div id="predictive-burnout-widget" style="margin-top:10px; padding:10px 12px; background:#161b22; border:1px solid #30363d; border-radius:8px; display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; align-items:center; gap:6px; font-size:0.74rem; font-weight:700; color:#58a6ff;">
+                <span>⏱️</span>
+                <span id="label-burnout-title">Autonomia Residua & Burnout</span>
+              </div>
+              <span id="burnout-status-badge" style="font-size:0.65rem; padding:2px 7px; border-radius:10px; font-weight:700; background:rgba(63,185,80,0.18); color:#3fb950; border:1px solid rgba(63,185,80,0.35);">Stabile</span>
+            </div>
+
+            <!-- TTE INDICATORI GEMINI & CLAUDE -->
+            <div style="display:flex; flex-direction:column; gap:4px; font-size:0.72rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span id="label-gemini-tte" style="color:#8b949e;">Gemini (TTE stimato):</span>
+                <strong id="gemini-tte-val" style="color:#58a6ff; font-family:Consolas,monospace;">--</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span id="label-claude-tte" style="color:#8b949e;">Claude (TTE stimato):</span>
+                <strong id="claude-tte-val" style="color:#3fb950; font-family:Consolas,monospace;">--</strong>
+              </div>
+            </div>
+
+            <!-- BARRA DI VELOCITÀ DEL CONSUMO (BURN-RATE) -->
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.68rem; color:#8b949e;">
+                <span id="label-burn-rate">Velocità di consumo (Burn-Rate):</span>
+                <strong id="burn-rate-speed-text" style="color:#e6edf3; font-family:Consolas,monospace;">Lento (0.0%/min)</strong>
+              </div>
+              <div style="width:100%; height:6px; background:#21262d; border-radius:3px; overflow:hidden; position:relative;">
+                <div id="burn-rate-progress-fill" style="width:15%; height:100%; background:#3fb950; transition:width 0.6s cubic-bezier(0.16, 1, 0.3, 1), background 0.4s ease; border-radius:3px;"></div>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size:0.62rem; color:#484f58; padding:0 2px;">
+                <span>Lento</span>
+                <span>Moderato</span>
+                <span>Intensivo</span>
+              </div>
+            </div>
+
+            <!-- ALERT VISIVO A TINTE CALDE (<30 MIN / BURNOUT IMMINENTE) -->
+            <div id="quota-burnout-alert" style="display:none; padding:8px 10px; border-radius:6px; background:rgba(218,54,51,0.15); border:1px solid #ff7b72; color:#ff7b72; font-size:0.71rem; line-height:1.35; align-items:center; gap:8px;">
+              <span style="font-size:1.1rem; animation:pulse 1.2s infinite alternate;">⚠️</span>
+              <div>
+                <strong id="label-burnout-alert-title" style="display:block;">Allerta Burnout Quota!</strong>
+                <span id="burnout-alert-msg">Autonomia Gemini inferiore a 30 min. Passaggio automatico a Claude imminente.</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1839,6 +1905,19 @@
           brainAutoOrbit: '🔄 Auto-Orbit',
           brainResetCam: '🎯 Reset Camera',
           brainClose: '✕ Chiudi',
+          burnoutTitle: 'Autonomia Residua & Burnout',
+          burnoutGeminiLabel: 'Gemini (TTE stimato):',
+          burnoutClaudeLabel: 'Claude (TTE stimato):',
+          burnoutRateLabel: 'Velocità di consumo (Burn-Rate):',
+          burnoutSlow: 'Lento',
+          burnoutModerate: 'Moderato',
+          burnoutIntensive: 'Intensivo',
+          burnoutStable: 'Stabile (Nessun consumo attivo)',
+          burnoutAvailable: '100% Disponibile (In riserva)',
+          burnoutWarmup: 'Calcolo in corso...',
+          burnoutAlertTitle: 'Allerta Burnout Quota!',
+          burnoutAlertMsg: 'Autonomia Gemini inferiore a 30 min. Passaggio automatico a Claude imminente.',
+          topbarTte: 'Autonomia:',
           inputPh: "Assegna un'istruzione a questo agente...",
           sendBtn: 'Invia Task',
           walkLog: (to, msg) => `🚶‍♂️ Cammina verso ${to} per assegnare: "${msg}"`,
@@ -1922,6 +2001,19 @@
           brainAutoOrbit: '🔄 Auto-Orbit',
           brainResetCam: '🎯 Reset Camera',
           brainClose: '✕ Close',
+          burnoutTitle: 'Remaining Autonomy & Burnout',
+          burnoutGeminiLabel: 'Gemini (Estimated TTE):',
+          burnoutClaudeLabel: 'Claude (Estimated TTE):',
+          burnoutRateLabel: 'Consumption Speed (Burn-Rate):',
+          burnoutSlow: 'Slow',
+          burnoutModerate: 'Moderate',
+          burnoutIntensive: 'Intensive',
+          burnoutStable: 'Stable (No active consumption)',
+          burnoutAvailable: '100% Available (On standby)',
+          burnoutWarmup: 'Calculating...',
+          burnoutAlertTitle: 'Quota Burnout Warning!',
+          burnoutAlertMsg: 'Gemini autonomy under 30 min. Imminent automatic fallback to Claude.',
+          topbarTte: 'Autonomy:',
           inputPh: 'Assign a task or instruction to this agent...',
           sendBtn: 'Send Task',
           walkLog: (to, msg) => `🚶‍♂️ Walking to ${to} to deliver: "${msg}"`,
@@ -1992,6 +2084,14 @@
         const bOrbit = document.getElementById('btn-brain-auto-orbit'); if (bOrbit) bOrbit.textContent = t.brainAutoOrbit;
         const bCam = document.getElementById('btn-brain-reset-cam'); if (bCam) bCam.textContent = t.brainResetCam;
         const bClose = document.getElementById('modal-brain-close-btn'); if (bClose) bClose.textContent = t.brainClose;
+        const bTitle = document.getElementById('label-burnout-title'); if (bTitle) bTitle.textContent = t.burnoutTitle;
+        const bGem = document.getElementById('label-gemini-tte'); if (bGem) bGem.textContent = t.burnoutGeminiLabel;
+        const bCla = document.getElementById('label-claude-tte'); if (bCla) bCla.textContent = t.burnoutClaudeLabel;
+        const bRate = document.getElementById('label-burn-rate'); if (bRate) bRate.textContent = t.burnoutRateLabel;
+        const bAlertT = document.getElementById('label-burnout-alert-title'); if (bAlertT) bAlertT.textContent = t.burnoutAlertTitle;
+        const bAlertM = document.getElementById('burnout-alert-msg'); if (bAlertM) bAlertM.textContent = t.burnoutAlertMsg;
+        const bTopTte = document.getElementById('label-topbar-tte'); if (bTopTte) bTopTte.textContent = t.topbarTte;
+        if (typeof updatePredictiveBurnout === 'function' && typeof liveGlobalQuota !== 'undefined' && liveGlobalQuota) updatePredictiveBurnout(liveGlobalQuota);
         const inp = document.getElementById('task-input'); if (inp) inp.placeholder = t.inputPh;
         const sBtn = document.getElementById('send-task-btn'); if (sBtn) sBtn.textContent = t.sendBtn;
         if (typeof updateTunnelUI === 'function' && typeof currentTunnelState !== 'undefined') updateTunnelUI(currentTunnelState);
@@ -2127,8 +2227,254 @@
             globalArgonQuota.textContent = `${ar.weekly} (${t.weeklyShort})`;
             globalArgonQuota.style.color = arNum < 0.02 ? '#da3633' : (arNum < 0.25 ? '#e3b341' : '#3fb950');
           }
+          if (typeof updatePredictiveBurnout === 'function') {
+            updatePredictiveBurnout(liveGlobalQuota);
+          }
         }
       }
+
+      function openDrawerForSelectedAgent() {
+        const drawer = document.getElementById('agent-drawer');
+        if (drawer) {
+          drawer.classList.add('mobile-open');
+          if (typeof updateTokenDisplay === 'function') {
+            updateTokenDisplay(selectedId || 10);
+          }
+          const widget = document.getElementById('predictive-burnout-widget');
+          if (widget) {
+            widget.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }
+      }
+      window.openDrawerForSelectedAgent = openDrawerForSelectedAgent;
+
+      // =========================================================================
+      // INNOVAZIONE #3: PREDICTIVE QUOTA BURNOUT & BURN-RATE TRACKER (IDEA #1)
+      // =========================================================================
+      let quotaBurnoutHistory = [];
+      let lastBurnoutAlertPlayed = 0;
+
+      function updatePredictiveBurnout(quotaData) {
+        if (!quotaData) return;
+        const t = I18N[appLang] || I18N.it;
+
+        const g = quotaData.gemini || null;
+        const c = quotaData.claude || null;
+        const pred = quotaData.predictiveBurnout || quotaData.predictive || quotaData.burnout || quotaData.burnoutPredictive || null;
+
+        const now = Date.now();
+        const g5h = g ? (typeof g.fiveHourFraction === 'number' ? g.fiveHourFraction : parseFloat(g.fiveHour) / 100) : 1;
+        const c5h = c ? (typeof c.fiveHourFraction === 'number' ? c.fiveHourFraction : parseFloat(c.fiveHour) / 100) : 1;
+
+        if (quotaBurnoutHistory.length === 0 || (now - quotaBurnoutHistory[quotaBurnoutHistory.length - 1].time) > 10000) {
+          quotaBurnoutHistory.push({ time: now, g5h, c5h });
+          if (quotaBurnoutHistory.length > 20) quotaBurnoutHistory.shift();
+        }
+
+        let tteMinutes = null;
+        let tteClaudeMinutes = null;
+        let burnRateFormatted = '';
+        let projectedGeminiTime = null;
+        let status = 'stable';
+        let isWarmup = false;
+
+        // Se il backend fornisce già dati predittivi (Modulo burnout-tracker.js di Luigi)
+        if (pred) {
+          if (pred.estimatedMinutesRemaining && pred.estimatedMinutesRemaining.gemini !== undefined) {
+            tteMinutes = pred.estimatedMinutesRemaining.gemini;
+          } else if (pred.timeToExhaustionMinutes !== undefined && pred.timeToExhaustionMinutes !== null) {
+            tteMinutes = Number(pred.timeToExhaustionMinutes);
+          }
+
+          if (pred.estimatedMinutesRemaining && pred.estimatedMinutesRemaining.claude !== undefined) {
+            tteClaudeMinutes = pred.estimatedMinutesRemaining.claude;
+          }
+
+          if (pred.burnRatePercentPerHour && pred.burnRatePercentPerHour.gemini) {
+            burnRateFormatted = `${pred.burnRatePercentPerHour.gemini}/h`;
+          } else if (pred.burnRateFormatted) {
+            burnRateFormatted = String(pred.burnRateFormatted);
+          }
+
+          if (pred.projectedExhaustionTime && pred.projectedExhaustionTime.gemini) {
+            projectedGeminiTime = pred.projectedExhaustionTime.gemini;
+          } else if (pred.estimatedExhaustionTime) {
+            projectedGeminiTime = pred.estimatedExhaustionTime;
+          }
+
+          if (pred.status) {
+            status = String(pred.status).toLowerCase();
+          }
+          if (pred.confidence === 'warmup' || pred.confidence === 'calcolo in corso') {
+            isWarmup = true;
+          }
+        }
+
+        // Calcolo predittivo client-side (fallback ed integrazione)
+        if (tteMinutes === null && g) {
+          if (quotaBurnoutHistory.length >= 2) {
+            const first = quotaBurnoutHistory[0];
+            const last = quotaBurnoutHistory[quotaBurnoutHistory.length - 1];
+            const dtMin = (last.time - first.time) / 60000;
+            const deltaG = first.g5h - last.g5h;
+            if (dtMin >= 0.25 && deltaG > 0.001) {
+              const ratePerMin = deltaG / dtMin;
+              tteMinutes = Math.max(1, Math.round(last.g5h / ratePerMin));
+              burnRateFormatted = `${(ratePerMin * 100).toFixed(2)}%/min`;
+            }
+          }
+
+          if (tteMinutes === null && g.reset5h) {
+            const resetMs = new Date(g.reset5h).getTime() - now;
+            if (resetMs > 0 && g5h < 0.98) {
+              const minsToReset = Math.round(resetMs / 60000);
+              tteMinutes = Math.max(1, Math.round(minsToReset * g5h));
+            }
+          }
+        }
+
+        // Determinazione velocità burn-rate
+        let burnRateLabel = t.burnoutSlow || 'Lento';
+        let progressWidth = '20%';
+        let progressColor = '#3fb950';
+        let statusBadgeText = t.burnoutSlow || 'Lento';
+        let statusBadgeBg = 'rgba(63, 185, 80, 0.18)';
+        let statusBadgeColor = '#3fb950';
+
+        if (status === 'burnout_imminent' || status === 'critical' || status === 'intensive' || (tteMinutes !== null && tteMinutes <= 35) || g5h < 0.10) {
+          status = 'intensive';
+          burnRateLabel = t.burnoutIntensive || 'Intensivo';
+          progressWidth = '85%';
+          progressColor = '#da3633';
+          statusBadgeText = (status === 'burnout_imminent') ? 'Imminente' : (t.burnoutIntensive || 'Intensivo');
+          statusBadgeBg = 'rgba(218, 54, 51, 0.2)';
+          statusBadgeColor = '#ff7b72';
+        } else if (status === 'moderate' || (tteMinutes !== null && tteMinutes <= 150) || g5h < 0.50) {
+          status = 'moderate';
+          burnRateLabel = t.burnoutModerate || 'Moderato';
+          progressWidth = '50%';
+          progressColor = '#d29922';
+          statusBadgeText = t.burnoutModerate || 'Moderato';
+          statusBadgeBg = 'rgba(210, 153, 34, 0.2)';
+          statusBadgeColor = '#e3b341';
+        } else if (tteMinutes === null || (g5h >= 0.98 && !burnRateFormatted)) {
+          status = 'stable';
+          burnRateLabel = t.burnoutSlow || 'Lento';
+          progressWidth = '15%';
+          progressColor = '#3fb950';
+          statusBadgeText = t.burnoutStable ? t.burnoutStable.split(' ')[0] : 'Stabile';
+          statusBadgeBg = 'rgba(63, 185, 80, 0.18)';
+          statusBadgeColor = '#3fb950';
+        }
+
+        // Formattazione TTE Gemini
+        let geminiTteStr = '';
+        let topbarTteStr = '';
+        if (isWarmup) {
+          geminiTteStr = t.burnoutWarmup || 'Calcolo in corso...';
+          topbarTteStr = 'Calcolo...';
+        } else if (tteMinutes === null || isNaN(tteMinutes) || tteMinutes <= 0) {
+          geminiTteStr = t.burnoutStable || 'Stabile (Nessun consumo attivo)';
+          topbarTteStr = 'Stabile';
+        } else {
+          const h = Math.floor(tteMinutes / 60);
+          const m = tteMinutes % 60;
+          const timeSuffix = projectedGeminiTime ? ` (Esaurimento alle ${projectedGeminiTime})` : ' al ritmo attuale';
+          if (h > 0) {
+            geminiTteStr = `~${h}h ${m < 10 ? '0' : ''}${m}m${timeSuffix}`;
+            topbarTteStr = `~${h}h ${m}m`;
+          } else {
+            geminiTteStr = `~${m}m${timeSuffix}`;
+            topbarTteStr = `~${m}m`;
+          }
+        }
+
+        // Formattazione TTE Claude
+        let claudeTteStr = '';
+        if (tteClaudeMinutes !== null && tteClaudeMinutes > 0) {
+          const ch = Math.floor(tteClaudeMinutes / 60);
+          const cm = tteClaudeMinutes % 60;
+          claudeTteStr = `~${ch}h ${cm < 10 ? '0' : ''}${cm}m al ritmo attuale`;
+        } else if (c) {
+          if (c5h >= 0.99) {
+            claudeTteStr = t.burnoutAvailable || '100% Disponibile (In riserva)';
+          } else {
+            claudeTteStr = `${Math.round(c5h * 100)}% (Autonomia ~5h)`;
+          }
+        } else {
+          claudeTteStr = '--';
+        }
+
+        // Aggiornamenti DOM via textContent (Carlo QA Security Anti-XSS)
+        const geminiTteEl = document.getElementById('gemini-tte-val');
+        if (geminiTteEl) geminiTteEl.textContent = geminiTteStr;
+
+        const claudeTteEl = document.getElementById('claude-tte-val');
+        if (claudeTteEl) claudeTteEl.textContent = claudeTteStr;
+
+        const speedTextEl = document.getElementById('burn-rate-speed-text');
+        if (speedTextEl) {
+          const suffix = burnRateFormatted ? ` (${burnRateFormatted})` : '';
+          speedTextEl.textContent = `${burnRateLabel}${suffix}`;
+        }
+
+        const fillEl = document.getElementById('burn-rate-progress-fill');
+        if (fillEl) {
+          fillEl.style.width = progressWidth;
+          fillEl.style.background = progressColor;
+        }
+
+        const badgeEl = document.getElementById('burnout-status-badge');
+        if (badgeEl) {
+          badgeEl.textContent = statusBadgeText;
+          badgeEl.style.background = statusBadgeBg;
+          badgeEl.style.color = statusBadgeColor;
+          badgeEl.style.borderColor = statusBadgeColor;
+        }
+
+        const topbarTteValEl = document.getElementById('topbar-tte-val');
+        if (topbarTteValEl) topbarTteValEl.textContent = topbarTteStr;
+
+        const topbarDotEl = document.getElementById('topbar-burn-rate-dot');
+        if (topbarDotEl) {
+          topbarDotEl.style.background = progressColor;
+          topbarDotEl.title = `Burn-Rate: ${burnRateLabel}`;
+        }
+
+        // ALERT VISIVO A TINTE CALDE SE TTE < 30 MIN
+        const isAlert = (tteMinutes !== null && tteMinutes > 0 && tteMinutes <= 30) || (g5h < 0.05);
+        const alertBox = document.getElementById('quota-burnout-alert');
+        const topbarBtn = document.getElementById('topbar-tte-btn');
+
+        if (alertBox) {
+          if (isAlert) {
+            alertBox.style.display = 'flex';
+            const alertMsg = document.getElementById('burnout-alert-msg');
+            if (alertMsg) {
+              alertMsg.textContent = (tteMinutes !== null && tteMinutes > 0)
+                ? `Autonomia Gemini stimata a ~${tteMinutes}m. Passaggio automatico a Claude imminente!`
+                : (t.burnoutAlertMsg || 'Autonomia Gemini in esaurimento imminente!');
+            }
+            if (topbarBtn) {
+              topbarBtn.style.background = 'rgba(218, 54, 51, 0.2)';
+              topbarBtn.style.borderColor = '#ff7b72';
+              topbarBtn.style.color = '#ff7b72';
+            }
+            if (now - lastBurnoutAlertPlayed > 60000) {
+              lastBurnoutAlertPlayed = now;
+              if (typeof playRetroSound === 'function') playRetroSound('alarm');
+            }
+          } else {
+            alertBox.style.display = 'none';
+            if (topbarBtn) {
+              topbarBtn.style.background = '#21262d';
+              topbarBtn.style.borderColor = '#30363d';
+              topbarBtn.style.color = '#58a6ff';
+            }
+          }
+        }
+      }
+      window.updatePredictiveBurnout = updatePredictiveBurnout;
 
       const drawerPermissionBox = document.getElementById('drawer-permission-box');
       const permTime = document.getElementById('perm-time');
@@ -2480,6 +2826,9 @@
           // Aggiornamento Quote & Modelli Reali Antigravity (Live RPC)
           if (msg.type === 'liveQuotaUpdate' && msg.quota) {
             liveGlobalQuota = msg.quota;
+            if (msg.predictiveBurnout && !liveGlobalQuota.predictiveBurnout) {
+              liveGlobalQuota.predictiveBurnout = msg.predictiveBurnout;
+            }
             updateTokenDisplay(selectedId);
           }
 
