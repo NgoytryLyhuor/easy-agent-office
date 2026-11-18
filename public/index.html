@@ -775,6 +775,26 @@
           box-shadow: 0 0 12px rgba(192, 132, 252, 0.45) !important;
           font-weight: 800 !important;
         }
+        #quick-project-container {
+          order: 0 !important;
+          flex-shrink: 0 !important;
+        }
+        #project-switcher-btn {
+          max-width: 160px !important;
+          padding: 6px 8px !important;
+        }
+        #active-project-name {
+          max-width: 70px !important;
+        }
+        #quick-project-dropdown {
+          position: fixed !important;
+          top: 56px !important;
+          left: 8px !important;
+          right: 8px !important;
+          min-width: auto !important;
+          max-width: none !important;
+          width: auto !important;
+        }
         .topbar-btn-text {
           display: none !important;
         }
@@ -883,6 +903,16 @@
           padding: 6px 9px !important;
           font-size: 0.70rem !important;
         }
+        #project-switcher-btn {
+          max-width: 125px !important;
+          padding: 5px 6px !important;
+        }
+        #active-project-name {
+          max-width: 52px !important;
+        }
+        .project-branch-badge {
+          display: none !important;
+        }
         #living-brain-btn {
           padding: 6px 10px !important;
           font-size: 0.72rem !important;
@@ -981,11 +1011,30 @@
       </div>
       <div class="topbar-actions" style="display:flex; align-items:center; gap:8px;">
         <div class="team-bar" id="team-pills"></div>
-        <button id="project-switcher-btn" class="topbar-btn" onclick="openProjectModal()" title="Cambia Progetto Target / Switch Target Workspace" style="background:#21262d; color:#3fb950; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px;">📂 <span id="label-project-btn" class="topbar-btn-text">Progetto:</span> <code id="active-project-name" style="color:#f0f6fc; font-family:Consolas,monospace;">AziendaAI</code></button>
         <button id="topbar-tunnel-btn" class="topbar-btn" onclick="openTunnelModal()" title="Mobile Preview Tunnel & QR Code (Idea #4)" style="background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">🌐 <span id="label-topbar-tunnel" class="topbar-btn-text">Mobile Preview:</span> <span id="topbar-tunnel-badge" style="background:#30363d; color:#8b949e; font-size:0.68rem; padding:1px 6px; border-radius:10px; font-weight:700;">Offline</span></button>
         <button id="kanban-toggle-btn" class="topbar-btn" onclick="openKanbanModal()" style="background:#21262d; color:#58a6ff; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px;">📋 <span id="label-kanban-btn">Lavagna Task</span> <span id="kanban-count-badge" style="background:#1f6feb; color:#fff; border-radius:99px; padding:1px 6px; font-size:0.68rem;">0</span></button>
         <button id="memory-graph-btn" class="topbar-btn" onclick="openMemoryModal()" title="Memoria & Skill Graph Aziendale (Idea #5)" style="background:#21262d; color:#bc8cff; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px;">🧬 <span id="label-memory-btn">Memoria & Skill</span></button>
         <button id="living-brain-btn" class="topbar-btn topbar-btn-brain" onclick="openLivingBrainModal()" title="The Living Brain 3D — Neurale AziendaAI" style="background:linear-gradient(135deg, #1f2937, #111827); color:#d2a8ff; border:1px solid #a371f7; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px; box-shadow:0 0 10px rgba(163,113,247,0.25);">🧠 <span id="label-living-brain-btn">Living Brain 3D</span></button>
+        <!-- QUICK PROJECT SWITCHER COMPATTO ACCANTO AL LIVING BRAIN 3D -->
+        <div id="quick-project-container" style="position:relative; display:inline-flex; align-items:center;">
+          <button id="project-switcher-btn" class="topbar-btn" onclick="toggleQuickProjectDropdown(event)" title="Cambia Progetto Target / Switch Target Workspace" style="background:#21262d; color:#3fb950; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
+            <span>📂</span>
+            <span id="label-project-btn" class="topbar-btn-text">Progetto:</span>
+            <code id="active-project-name" style="color:#f0f6fc; font-family:Consolas,monospace; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; vertical-align:middle;">AziendaAI</code>
+            <span id="active-project-branch" class="project-branch-badge" style="background:rgba(56,139,253,0.18); color:#58a6ff; border:1px solid rgba(56,139,253,0.4); font-size:0.65rem; padding:1px 6px; border-radius:10px; font-family:Consolas,monospace; font-weight:600; display:inline-flex; align-items:center; gap:3px;">
+              <span style="font-size:0.68rem;">🌿</span><span id="active-project-branch-name">main</span>
+            </span>
+            <span style="font-size:0.65rem; color:#8b949e; margin-left:1px;">▾</span>
+          </button>
+          <!-- QUICK DROPDOWN PANEL -->
+          <div id="quick-project-dropdown" style="display:none; position:absolute; top:calc(100% + 6px); right:0; min-width:280px; max-width:340px; background:#161b22; border:1px solid #30363d; border-radius:8px; box-shadow:0 12px 32px rgba(0,0,0,0.85); z-index:3000; padding:8px; overflow:hidden;">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:4px 6px 8px 6px; border-bottom:1px solid #21262d; margin-bottom:6px;">
+              <span style="font-size:0.72rem; font-weight:700; color:#8b949e; text-transform:uppercase; letter-spacing:0.5px;">Workspace Registry</span>
+              <button onclick="closeQuickProjectDropdown(); openProjectModal();" style="background:transparent; border:none; color:#58a6ff; font-size:0.72rem; font-weight:600; cursor:pointer; padding:2px 4px;">⚙️ Gestisci / Nuovo</button>
+            </div>
+            <div id="quick-project-list" style="display:flex; flex-direction:column; gap:4px; max-height:220px; overflow-y:auto; padding-right:2px;"></div>
+          </div>
+        </div>
         <button id="sound-toggle-btn" class="topbar-btn" onclick="toggleRetroSound()" title="Effetti Sonori 8-Bit / 8-Bit Sound Effects" style="background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:5px 9px; font-size:0.78rem; font-weight:700; cursor:pointer;">🔊</button>
         <button id="lang-toggle-btn" class="topbar-btn" onclick="toggleAppLang()" style="background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer;">🇮🇹 IT</button>
       </div>
@@ -2591,13 +2640,9 @@
             });
           }
 
-          // Cambio Progetto Target sincronizzato da Web o Discord
+          // Cambio Progetto Target sincronizzato da Web o Discord (Idea #5 Multi-Project Switcher)
           if (msg.type === 'targetProjectChanged' && msg.projectPath) {
-            currentProjectPath = msg.projectPath;
-            const nameEl = document.getElementById('active-project-name');
-            if (nameEl) nameEl.textContent = msg.projectName || msg.projectPath.split(/[\\/]/).pop();
-            const btnEl = document.getElementById('project-switcher-btn');
-            if (btnEl) btnEl.title = `Progetto Attivo: ${msg.projectPath}`;
+            applyProjectChange(msg);
           }
 
           // Live Preview Tunnel & QR Code (Idea #4)
@@ -3338,10 +3383,52 @@
       fetchKanbanTasks();
 
       // =========================================================================
-      // INNOVAZIONE #4: SELETTORE PROGETTO TARGET (MULTI-WORKSPACE)
+      // INNOVAZIONE #4 & #5: MULTI-PROJECT SANDBOX SWITCHER & SUB-BRAIN ISOLATION
       // =========================================================================
       let currentProjectPath = '';
       let registeredProjects = [];
+
+      function applyProjectChange(data) {
+        if (!data) return;
+        if (data.projectPath) currentProjectPath = data.projectPath;
+        if (Array.isArray(data.projects)) registeredProjects = data.projects;
+        else if (Array.isArray(data.list)) registeredProjects = data.list;
+
+        const projName = data.projectName || (data.projectPath ? data.projectPath.split(/[\\/]/).pop() : 'AziendaAI');
+        const branchName = data.gitBranch || data.branch || 'main';
+
+        const nameEl = document.getElementById('active-project-name');
+        if (nameEl) nameEl.textContent = projName;
+
+        const branchEl = document.getElementById('active-project-branch-name');
+        if (branchEl) branchEl.textContent = branchName;
+
+        document.title = `🏢 ${projName} — AziendaAI Office`;
+
+        const btnEl = document.getElementById('project-switcher-btn');
+        if (btnEl) btnEl.title = `Progetto Attivo: ${data.projectPath || projName} (🌿 ${branchName})`;
+
+        renderProjectsListUI();
+        renderQuickProjectsDropdown();
+
+        // Ricarica reattivamente il Living Brain 3D con la sottomemoria del nuovo progetto target
+        if (typeof fetchLivingBrainData === 'function') {
+          fetchLivingBrainData().then(brain => {
+            if (typeof livingBrainGraphInstance !== 'undefined' && livingBrainGraphInstance && brain) {
+              livingBrainGraphInstance.graphData(brain);
+            }
+            const nCount = document.getElementById('brain-nodes-count');
+            const lCount = document.getElementById('brain-links-count');
+            if (nCount && brain && Array.isArray(brain.nodes)) nCount.textContent = String(brain.nodes.length);
+            if (lCount && brain && Array.isArray(brain.links)) lCount.textContent = String(brain.links.length);
+          }).catch(() => {});
+        }
+
+        // Ricarica memoria & skill graph
+        if (typeof fetchMemoryData === 'function') {
+          fetchMemoryData();
+        }
+      }
 
       function renderProjectsListUI() {
         const container = document.getElementById('project-saved-list');
@@ -3351,21 +3438,22 @@
           return;
         }
         container.innerHTML = registeredProjects.map(p => {
-          const isAct = p.isActive;
+          const isAct = Boolean(p.isActive);
           const bg = isAct ? 'rgba(56, 139, 253, 0.15)' : '#161b22';
           const border = isAct ? '#58a6ff' : '#30363d';
+          const branchBadge = p.branch ? `<span style="font-size:0.65rem; color:#8b949e; margin-left:4px;">🌿 ${escapeHtml(p.branch)}</span>` : '';
           const badge = isAct ? '<span style="background:#238636; color:#fff; font-size:0.68rem; padding:2px 6px; border-radius:10px; font-weight:700;">ATTIVO</span>' : '';
           return `
             <div style="display:flex; align-items:center; justify-content:space-between; background:${bg}; border:1px solid ${border}; border-radius:6px; padding:7px 10px;">
-              <div style="display:flex; flex-direction:column; gap:2px; overflow:hidden; padding-right:8px;">
-                <div style="font-size:0.82rem; font-weight:600; color:#f0f6fc; display:flex; align-items:center; gap:6px;">
-                  ${escapeHtml(p.name)} ${badge}
+              <div style="display:flex; flex-direction:column; gap:2px; overflow:hidden; padding-right:8px; min-width:0; flex:1;">
+                <div style="font-size:0.82rem; font-weight:600; color:#f0f6fc; display:flex; align-items:center; gap:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                  <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(p.name)}</span> ${branchBadge} ${badge}
                 </div>
-                <div style="font-size:0.71rem; color:#8b949e; font-family:Consolas,monospace; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">
+                <div style="font-size:0.71rem; color:#8b949e; font-family:Consolas,monospace; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="${escapeHtml(p.path)}">
                   ${escapeHtml(p.path)}
                 </div>
               </div>
-              ${isAct ? '' : `<button class="project-activate-btn" data-path="${encodeURIComponent(p.path)}" style="background:#21262d; color:#58a6ff; border:1px solid #30363d; border-radius:4px; padding:4px 8px; font-size:0.74rem; font-weight:600; cursor:pointer; white-space:nowrap;">Attiva 👉</button>`}
+              ${isAct ? '' : `<button class="project-activate-btn" data-path="${encodeURIComponent(p.path)}" data-name="${encodeURIComponent(p.name || '')}" style="background:#21262d; color:#58a6ff; border:1px solid #30363d; border-radius:4px; padding:4px 8px; font-size:0.74rem; font-weight:600; cursor:pointer; white-space:nowrap;">Attiva 👉</button>`}
             </div>
           `;
         }).join('');
@@ -3374,46 +3462,147 @@
           container.addEventListener('click', ev => {
             const btn = ev.target.closest('.project-activate-btn');
             if (!btn || !container.contains(btn)) return;
-            window.switchDirectProject(decodeURIComponent(btn.dataset.path));
+            window.switchDirectProject(decodeURIComponent(btn.dataset.path), decodeURIComponent(btn.dataset.name || ''));
           });
         }
       }
 
-      window.switchDirectProject = async function(pPath) {
-        try {
-          const res = await fetch('/api/project', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ projectPath: pPath })
+      function renderQuickProjectsDropdown() {
+        const container = document.getElementById('quick-project-list');
+        if (!container) return;
+        if (!registeredProjects || registeredProjects.length === 0) {
+          container.innerHTML = '<div style="color:#8b949e; font-size:0.76rem; font-style:italic; padding:6px 8px;">Nessun progetto registrato</div>';
+          return;
+        }
+        container.innerHTML = registeredProjects.map(p => {
+          const isAct = Boolean(p.isActive);
+          const bg = isAct ? 'rgba(56, 139, 253, 0.18)' : '#0d1117';
+          const border = isAct ? '#58a6ff' : '#21262d';
+          const branchBadge = p.branch ? `<span style="font-size:0.65rem; color:#8b949e; margin-left:4px;">🌿 ${escapeHtml(p.branch)}</span>` : '';
+          const badge = isAct ? '<span style="background:#238636; color:#fff; font-size:0.62rem; padding:1px 5px; border-radius:8px; font-weight:700; margin-left:auto;">ATTIVO</span>' : '';
+          return `
+            <div class="quick-project-item" data-path="${encodeURIComponent(p.path)}" data-name="${encodeURIComponent(p.name || '')}" style="display:flex; align-items:center; justify-content:space-between; gap:6px; background:${bg}; border:1px solid ${border}; border-radius:6px; padding:6px 8px; cursor:pointer; transition:background 0.15s ease;" onmouseover="if(!${isAct}) this.style.background='#21262d'" onmouseout="if(!${isAct}) this.style.background='#0d1117'">
+              <div style="display:flex; flex-direction:column; gap:2px; overflow:hidden; min-width:0; flex:1;">
+                <div style="font-size:0.78rem; font-weight:700; color:#f0f6fc; display:flex; align-items:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                  <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(p.name)}</span> ${branchBadge}
+                </div>
+                <div style="font-size:0.68rem; color:#8b949e; font-family:Consolas,monospace; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="${escapeHtml(p.path)}">
+                  ${escapeHtml(p.path)}
+                </div>
+              </div>
+              ${badge}
+            </div>
+          `;
+        }).join('');
+
+        if (!container.dataset.delegated) {
+          container.dataset.delegated = '1';
+          container.addEventListener('click', ev => {
+            const item = ev.target.closest('.quick-project-item');
+            if (!item || !container.contains(item)) return;
+            const pPath = decodeURIComponent(item.dataset.path || '');
+            const pName = decodeURIComponent(item.dataset.name || '');
+            if (pPath) {
+              window.switchDirectProject(pPath, pName);
+            }
           });
-          const data = await res.json();
+        }
+      }
+
+      function toggleQuickProjectDropdown(event) {
+        if (event) event.stopPropagation();
+        const dd = document.getElementById('quick-project-dropdown');
+        if (!dd) return;
+        const isShown = dd.style.display === 'block';
+        if (isShown) {
+          dd.style.display = 'none';
+        } else {
+          dd.style.display = 'block';
+          renderQuickProjectsDropdown();
+          if (typeof fetchProjectsRegistry === 'function') fetchProjectsRegistry();
+        }
+      }
+      window.toggleQuickProjectDropdown = toggleQuickProjectDropdown;
+
+      function closeQuickProjectDropdown() {
+        const dd = document.getElementById('quick-project-dropdown');
+        if (dd) dd.style.display = 'none';
+      }
+      window.closeQuickProjectDropdown = closeQuickProjectDropdown;
+
+      document.addEventListener('click', (e) => {
+        const container = document.getElementById('quick-project-container');
+        if (container && !container.contains(e.target)) {
+          closeQuickProjectDropdown();
+        }
+      });
+
+      window.switchDirectProject = async function(pPath, pName) {
+        try {
+          let res = null;
+          let data = null;
+          // Tenta la rotta dedicata POST /api/projects/switch
+          try {
+            res = await fetch('/api/projects/switch', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ projectPath: pPath, nameOrPath: pName || pPath, projectName: pName })
+            });
+            if (res.ok) data = await res.json();
+          } catch (_) {}
+
+          // Fallback a POST /api/project
+          if (!data || !data.ok) {
+            res = await fetch('/api/project', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ projectPath: pPath, projectName: pName })
+            });
+            data = await res.json();
+          }
+
           if (data && data.ok) {
-            currentProjectPath = data.projectPath;
-            if (Array.isArray(data.projects)) registeredProjects = data.projects;
-            const nameEl = document.getElementById('active-project-name');
-            if (nameEl) nameEl.textContent = data.projectName;
-            renderProjectsListUI();
+            applyProjectChange(data);
             closeProjectModal();
+            closeQuickProjectDropdown();
             const time = new Date().toLocaleTimeString();
             appendLog(10, `[${time}] 📂 Progetto Target cambiato su: ${data.projectName} (${data.projectPath})`, 'done');
+            playRetroSound('complete');
+          } else if (data && data.error) {
+            const errEl = document.getElementById('project-error-msg');
+            if (errEl) {
+              errEl.textContent = data.error;
+              errEl.style.display = 'block';
+            }
           }
-        } catch {}
+        } catch (err) {
+          console.warn('[ProjectSwitch] Errore switch:', err);
+        }
       };
 
-      async function fetchActiveProject() {
+      async function fetchProjectsRegistry() {
         try {
-          const res = await fetch('/api/project');
-          const data = await res.json();
-          if (data && data.projectPath) {
-            currentProjectPath = data.projectPath;
-            if (Array.isArray(data.projects)) registeredProjects = data.projects;
-            const nameEl = document.getElementById('active-project-name');
-            if (nameEl) nameEl.textContent = data.projectName || data.projectPath.split(/[\\/]/).pop();
-            const btnEl = document.getElementById('project-switcher-btn');
-            if (btnEl) btnEl.title = `Progetto Attivo: ${data.projectPath}`;
-            renderProjectsListUI();
+          let data = null;
+          try {
+            const resReg = await fetch('/api/projects/registry');
+            if (resReg.ok) data = await resReg.json();
+          } catch (_) {}
+
+          if (!data || (!data.projects && !Array.isArray(data))) {
+            const resProj = await fetch('/api/project');
+            if (resProj.ok) data = await resProj.json();
           }
-        } catch {}
+
+          if (data) {
+            applyProjectChange(data);
+          }
+        } catch (err) {
+          console.warn('[ProjectsRegistry] Errore fetch:', err);
+        }
+      }
+
+      async function fetchActiveProject() {
+        return fetchProjectsRegistry();
       }
 
       window.openProjectModal = function() {
@@ -3454,14 +3643,12 @@
             }
             return;
           }
-          currentProjectPath = data.projectPath;
-          if (Array.isArray(data.projects)) registeredProjects = data.projects;
-          const nameEl = document.getElementById('active-project-name');
-          if (nameEl) nameEl.textContent = data.projectName;
-          renderProjectsListUI();
+          applyProjectChange(data);
           closeProjectModal();
+          closeQuickProjectDropdown();
           const time = new Date().toLocaleTimeString();
           appendLog(10, `[${time}] 📂 Progetto Target cambiato su: ${data.projectName} (${data.projectPath})`, 'done');
+          playRetroSound('complete');
         } catch (e) {
           if (err) {
             err.textContent = e.message;
