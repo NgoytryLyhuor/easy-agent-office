@@ -79,6 +79,7 @@ function serveFile(filePath, res) {
 // ====================================================================
 const TUNNEL_SAFE_API_WHITELIST = new Set([
   '/api/quota',
+  '/api/quota/burnout',
   '/api/memory/neural-graph',
   '/api/memory',
   '/api/memory/skills',

@@ -38,11 +38,12 @@ const { execFile, exec } = require('child_process');
 const { PNG } = require('pngjs');
 const { setDiscordWebhook, sendDiscordNotification, getDiscordConfig } = require('./discord-bridge');
 const routing = require('./routing');
+const burnoutTracker = require('./burnout-tracker');
 const warRoom = require('./war-room');
 const tunnelManager = require('./tunnel-manager');
 const memoryEngine = require('./memory-engine');
 const { resolveLanguageServer } = require('./antigravity-path');
-const { initDiscordBot, broadcastToDiscord, sendDiscordPermissionPrompt, sendFinalAgentResponse, updateDiscordUsageMonitor, sendDiscordAnnouncement, sendDiscordImage, transcribeAudioWithGemini } = require('./discord-bot');
+const { initDiscordBot, broadcastToDiscord, sendDiscordPermissionPrompt, sendFinalAgentResponse, updateDiscordUsageMonitor, sendDiscordAnnouncement, sendDiscordImage, transcribeAudioWithGemini, checkPredictiveBurnoutAlert } = require('./discord-bot');
 
 const app = express();
 const server = http.createServer(app);
@@ -1194,6 +1195,10 @@ async function getLiveQuotaAndModels() {
       resting,
       restMessage: resting ? routing.restMessage() : null,
       subagents: subagentsList,
+      predictiveBurnout: burnoutTracker.recordQuotaSample({
+        gemini: { fiveHourFraction: g5hFrac, weeklyFraction: gWeeklyFrac },
+        claude: { fiveHourFraction: c5hFrac, weeklyFraction: cWeeklyFrac }
+      }),
       timestamp: new Date().toISOString()
     };
 
@@ -1208,14 +1213,26 @@ async function getLiveQuotaAndModels() {
 app.get('/api/quota', async (req, res) => {
   const data = await getLiveQuotaAndModels();
   if (data) {
-    res.json({ ok: true, data });
+    res.json({
+      ok: true,
+      data,
+      predictiveBurnout: data.predictiveBurnout || burnoutTracker.getPredictiveBurnout()
+    });
   } else {
     res.status(503).json({ ok: false, error: 'Language server offline o non raggiungibile' });
   }
 });
 
+// Endpoint dedicato per il monitoraggio predittivo del burnout (Innovazione #3)
+app.get('/api/quota/burnout', (req, res) => {
+  res.json({
+    ok: true,
+    predictiveBurnout: burnoutTracker.getPredictiveBurnout()
+  });
+});
+
 // Carica subito le quote all'avvio del server
-getLiveQuotaAndModels().then(data => { if (data) broadcast({ type: 'liveQuotaUpdate', quota: data }); }).catch(() => {});
+getLiveQuotaAndModels().then(data => { if (data) broadcast({ type: 'liveQuotaUpdate', quota: data, predictiveBurnout: data.predictiveBurnout }); }).catch(() => {});
 
 // Broadcast periodico telemetria quote via WebSocket e su Discord #📊-monitor-usage
 setInterval(async () => {
@@ -1223,10 +1240,14 @@ setInterval(async () => {
   if (data) {
     broadcast({
       type: 'liveQuotaUpdate',
-      quota: data
+      quota: data,
+      predictiveBurnout: data.predictiveBurnout
     });
     try {
       await updateDiscordUsageMonitor(data);
+      if (data.predictiveBurnout && typeof checkPredictiveBurnoutAlert === 'function') {
+        await checkPredictiveBurnoutAlert(data.predictiveBurnout);
+      }
     } catch {}
   }
 }, 8000);

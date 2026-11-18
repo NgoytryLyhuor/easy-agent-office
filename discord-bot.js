@@ -1678,6 +1678,159 @@ function sendDiscordPermissionPrompt(requestId, agentId, agentName, tool, comman
   return true;
 }
 
+// ====================================================================
+// PREDICTIVE BURNOUT ALERT ENGINE (INNOVAZIONE #3)
+// ====================================================================
+const BURNOUT_ALERT_FILE = path.join(__dirname, '.last_burnout_alert');
+const BURNOUT_ALERT_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 ore rigorose (7200s) anti-spam
+let lastBurnoutAlertMemoryTime = 0;
+
+function getLastBurnoutAlertTime() {
+  if (lastBurnoutAlertMemoryTime > 0) return lastBurnoutAlertMemoryTime;
+  try {
+    if (fs.existsSync(BURNOUT_ALERT_FILE)) {
+      const raw = fs.readFileSync(BURNOUT_ALERT_FILE, 'utf8').trim();
+      const parsed = parseInt(raw, 10);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        lastBurnoutAlertMemoryTime = parsed;
+        return parsed;
+      }
+    }
+  } catch {}
+  return 0;
+}
+
+function setLastBurnoutAlertTime(ts) {
+  lastBurnoutAlertMemoryTime = ts;
+  try {
+    fs.writeFileSync(BURNOUT_ALERT_FILE, String(ts), 'utf8');
+  } catch {}
+}
+
+function resetBurnoutAlertCooldown() {
+  lastBurnoutAlertMemoryTime = 0;
+  try {
+    if (fs.existsSync(BURNOUT_ALERT_FILE)) {
+      fs.unlinkSync(BURNOUT_ALERT_FILE);
+    }
+  } catch {}
+}
+
+function getBurnoutAlertStatus(customNow = null) {
+  const now = typeof customNow === 'number' ? customNow : Date.now();
+  const lastTime = getLastBurnoutAlertTime();
+  const elapsed = now - lastTime;
+  const inCooldown = lastTime > 0 && elapsed < BURNOUT_ALERT_COOLDOWN_MS;
+  const remainingMs = inCooldown ? (BURNOUT_ALERT_COOLDOWN_MS - elapsed) : 0;
+  return {
+    lastAlertTime: lastTime,
+    inCooldown,
+    cooldownRemainingMs: remainingMs,
+    cooldownRemainingMinutes: Math.ceil(remainingMs / 60000)
+  };
+}
+
+async function checkPredictiveBurnoutAlert(predictiveData, clientOverride = null, customNow = null) {
+  if (!predictiveData || typeof predictiveData !== 'object') {
+    return { ok: false, triggered: false, reason: 'invalid_data' };
+  }
+
+  const now = typeof customNow === 'number' ? customNow : Date.now();
+  const activeClient = clientOverride || client;
+
+  // Criteri di allerta:
+  // 1. Status 'burnout_imminent'
+  // 2. TTE Gemini <= 30 min con consumo attivo
+  // 3. Quota Gemini residua < 15% con consumo attivo
+  const tteGemini = predictiveData.estimatedMinutesRemaining?.gemini;
+  const burnRateGemini = predictiveData.burnRateHourly?.gemini || 0;
+  const curG = predictiveData.currentQuota?.gemini5h ?? 1.0;
+
+  const isCriticalTte = (tteGemini !== null && tteGemini !== undefined && tteGemini <= 30 && burnRateGemini > 0);
+  const isCriticalQuota = (curG < 0.15 && burnRateGemini > 0);
+  const isBurnoutImminent = (predictiveData.status === 'burnout_imminent');
+
+  if (!isCriticalTte && !isCriticalQuota && !isBurnoutImminent) {
+    return { ok: true, triggered: false, reason: 'nominal_conditions' };
+  }
+
+  // Verifica Cooldown 2 ore (7200s)
+  const status = getBurnoutAlertStatus(now);
+  if (status.inCooldown) {
+    return {
+      ok: true,
+      triggered: false,
+      cooldown: true,
+      remainingMinutes: status.cooldownRemainingMinutes,
+      message: `Alert preventivo soppresso: cooldown di 2 ore attivo (${status.cooldownRemainingMinutes}m rimanenti)`
+    };
+  }
+
+  // Costruzione Rich Embed formattato e sanitizzato
+  const isSevere = isBurnoutImminent || (tteGemini !== null && tteGemini <= 15);
+  const alertColor = isSevere ? 0xcf222e : 0xd29922; // Rosso o Arancione
+  const tteLabel = tteGemini !== null ? `~${tteGemini} minuti` : '< 15 minuti (consumo elevato)';
+  const projTime = predictiveData.projectedExhaustionTime?.gemini || 'Imminente';
+  const burnRateStr = predictiveData.burnRatePercentPerHour?.gemini || `${(burnRateGemini * 100).toFixed(2)}%`;
+
+  const embed = new EmbedBuilder()
+    .setTitle('⚠️ PREDICTIVE QUOTA BURNOUT ALERT — Autonomia Gemini Critica')
+    .setDescription(sanitizePublicText('Rilevato ritmo di consumo intensivo sulla quota Gemini. Il team operativo è allertato per prevenire interruzioni delle attività di sviluppo.'))
+    .setColor(alertColor)
+    .addFields(
+      {
+        name: '🔥 Burn-Rate Orario',
+        value: `\`${burnRateStr}/h\``,
+        inline: true
+      },
+      {
+        name: '⏳ Autonomia Stimata (TTE)',
+        value: `\`${tteLabel}\``,
+        inline: true
+      },
+      {
+        name: '🎯 Esaurimento Stimato',
+        value: `\`${projTime}\``,
+        inline: true
+      },
+      {
+        name: '🛡️ Mitigazione Aziendale Automatica',
+        value: 'Passaggio trasparente a **Claude 3.7 Sonnet** in caso di azzeramento, oppure pausa strategica anti-spreco delle quote.',
+        inline: false
+      }
+    )
+    .setFooter({ text: 'AziendaAI Predictive Engine • Innovazione #3 • Cooldown 2 ore' })
+    .setTimestamp(new Date(now));
+
+  let sent = false;
+  if (activeClient && activeClient.guilds && activeClient.guilds.cache) {
+    for (const guild of activeClient.guilds.cache.values()) {
+      const channel = guild.channels.cache.find(c => c.isTextBased() && c.name.includes('sala-operativa'));
+      if (channel) {
+        try {
+          await channel.send({ embeds: [embed] });
+          sent = true;
+        } catch (err) {
+          console.warn('[Discord Bot] Invio alert burnout non riuscito:', err.message);
+        }
+      }
+    }
+  }
+
+  // Registra il timestamp dell'alert sia in memoria che su disco
+  setLastBurnoutAlertTime(now);
+
+  return {
+    ok: true,
+    triggered: true,
+    sentToDiscord: sent,
+    alertTimestamp: now,
+    burnRate: burnRateStr,
+    estimatedMinutesRemaining: tteGemini,
+    projectedExhaustionTime: projTime
+  };
+}
+
 // Aggiorna la dashboard live delle quote nel canale #📊-monitor-usage
 let lastUsageMessageId = null;
 
@@ -1689,32 +1842,48 @@ async function updateDiscordUsageMonitor(quotaData) {
   const claudeWeekly = quotaData.claude?.weekly ?? '100%';
   const claude5h = quotaData.claude?.fiveHour ?? '100%';
 
+  const fields = [
+    {
+      name: '🤖 Gemini Models (Flash / Pro)',
+      value: `• **Finestra 5 Ore:** \`${gemini5h}\` rimanente (reset: ${quotaData.gemini?.reset5h || 'N/A'})\n• **Finestra Settimanale:** \`${geminiWeekly}\` rimanente (reset: ${quotaData.gemini?.resetWeekly || 'N/A'})`,
+      inline: false
+    },
+    {
+      name: '🧠 Claude & GPT Models (Fallback)',
+      value: `• **Finestra 5 Ore:** \`${claude5h}\` rimanente (reset: ${quotaData.claude?.reset5h || 'N/A'})\n• **Finestra Settimanale:** \`${claudeWeekly}\` rimanente (reset: ${quotaData.claude?.resetWeekly || 'N/A'})\n• Stato: ${quotaData.resting ? '💤 **TUTTI A RIPOSO**' : (quotaData.claude?.isFallbackActive ? '⚡ **ATTIVO COME FALLBACK**' : '🟢 Pronto per fallback')}`,
+      inline: false
+    }
+  ];
+
+  if (quotaData.predictiveBurnout) {
+    const pb = quotaData.predictiveBurnout;
+    const gRate = pb.burnRatePercentPerHour?.gemini || '0.00%';
+    const gTte = pb.estimatedMinutesRemaining?.gemini !== null && pb.estimatedMinutesRemaining?.gemini !== undefined
+      ? `\`~${pb.estimatedMinutesRemaining.gemini} min\` (esaurimento stimato: \`${pb.projectedExhaustionTime?.gemini || 'N/A'}\`)`
+      : '`Stabile (nessun consumo critico)`';
+    fields.push({
+      name: '📈 Predictive Burnout & Burn-Rate Tracker',
+      value: `• **Burn-Rate Gemini:** \`${gRate}/h\`\n• **Autonomia Rimanente:** ${gTte}\n• **Stato:** \`${(pb.status || 'optimal').toUpperCase()}\` (Affidabilità: *${pb.confidence || 'calcolo in corso'}*)`,
+      inline: false
+    });
+  }
+
+  fields.push({
+    name: '👥 Modelli Subagenti Attivi',
+    value: (quotaData.subagents || [
+      { name: 'Alberto (CEO)', model: 'Gemini 3.8 Flash (Low)' },
+      { name: 'Luigi (Backend)', model: 'Gemini 3.8 Flash (Tiered)' },
+      { name: 'Gabri (Frontend)', model: 'Gemini 3.8 Flash (Tiered)' },
+      { name: 'Carlo (QA & Revisor)', model: 'Gemini 3.8 Flash (Tiered)' }
+    ]).map(a => `• **${a.name}:** \`${a.model}\``).join('\n'),
+    inline: false
+  });
+
   const embed = new EmbedBuilder()
     .setTitle('📊 Monitoraggio Quote & Modelli Antigravity (Live)')
     .setDescription('Stato delle quote e allocazione modelli in tempo reale rilevati direttamente dal Language Server di Antigravity.')
     .setColor(0x58a6ff)
-    .addFields(
-      {
-        name: '🤖 Gemini Models (Flash / Pro)',
-        value: `• **Finestra 5 Ore:** \`${gemini5h}\` rimanente (reset: ${quotaData.gemini?.reset5h || 'N/A'})\n• **Finestra Settimanale:** \`${geminiWeekly}\` rimanente (reset: ${quotaData.gemini?.resetWeekly || 'N/A'})`,
-        inline: false
-      },
-      {
-        name: '🧠 Claude & GPT Models (Fallback)',
-        value: `• **Finestra 5 Ore:** \`${claude5h}\` rimanente (reset: ${quotaData.claude?.reset5h || 'N/A'})\n• **Finestra Settimanale:** \`${claudeWeekly}\` rimanente (reset: ${quotaData.claude?.resetWeekly || 'N/A'})\n• Stato: ${quotaData.resting ? '💤 **TUTTI A RIPOSO**' : (quotaData.claude?.isFallbackActive ? '⚡ **ATTIVO COME FALLBACK**' : '🟢 Pronto per fallback')}`,
-        inline: false
-      },
-      {
-        name: '👥 Modelli Subagenti Attivi',
-        value: (quotaData.subagents || [
-          { name: 'Alberto (CEO)', model: 'Gemini 3.8 Flash (Low)' },
-          { name: 'Luigi (Backend)', model: 'Gemini 3.8 Flash (Tiered)' },
-          { name: 'Gabri (Frontend)', model: 'Gemini 3.8 Flash (Tiered)' },
-          { name: 'Carlo (QA & Revisor)', model: 'Gemini 3.8 Flash (Tiered)' }
-        ]).map(a => `• **${a.name}:** \`${a.model}\``).join('\n'),
-        inline: false
-      }
-    )
+    .addFields(fields)
     .setFooter({ text: 'AziendaAI Telemetry • Aggiornato in tempo reale' })
     .setTimestamp();
 
@@ -1809,5 +1978,10 @@ module.exports = {
   validateInboundDocument,
   formatInboundDocumentPrompt,
   handleProjectCommand,
+  // Innovazione #3: Predictive Quota Burnout & Burn-Rate Tracker
+  checkPredictiveBurnoutAlert,
+  getBurnoutAlertStatus,
+  resetBurnoutAlertCooldown,
+  BURNOUT_ALERT_COOLDOWN_MS,
   getClient: () => client
 };

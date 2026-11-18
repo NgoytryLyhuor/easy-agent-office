@@ -1,6 +1,7 @@
 // Routing Gemini <-> Claude (alterego) + Coda di ripresa post-riposo e lettura da agents.config.json
 const fs = require('fs');
 const path = require('path');
+const burnoutTracker = require('./burnout-tracker');
 
 const DEFAULT_PRIMARY = {
   10: '00000000-0000-4000-8000-000000000010', // Alberto (CEO) — esegui `node setup-agents.js` per generare i tuoi UUID
@@ -120,6 +121,9 @@ function setTargetProject(newPath) {
 }
 
 function updateMode({ g5h, gWeekly = 1, c5h, cWeekly, resumeAt, geminiResetAt, claudeResetAt }) {
+  if (g5h !== undefined || c5h !== undefined) {
+    burnoutTracker.recordQuotaSample({ g5h, gWeekly, c5h, cWeekly });
+  }
   const prev = state.mode;
   const geminiLow = g5h < 0.02 || gWeekly < 0.02;
   const geminiOk = g5h > 0.10 && gWeekly > 0.05;
@@ -402,5 +406,11 @@ module.exports = {
   getLastDiskMode: () => state.lastDiskMode,
   setLastDiskMode: (m) => { state.lastDiskMode = m; },
   allSessionsMap,
-  REGISTRY_FILE
+  REGISTRY_FILE,
+  // Innovazione #3: Predictive Quota Burnout & Burn-Rate Tracker
+  recordQuotaSample: burnoutTracker.recordQuotaSample,
+  getPredictiveBurnout: burnoutTracker.getPredictiveBurnout,
+  resetBurnoutHistory: burnoutTracker.resetBurnoutHistory,
+  getSampleHistory: burnoutTracker.getSampleHistory,
+  burnoutTracker
 };
