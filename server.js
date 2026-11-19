@@ -100,6 +100,49 @@ const WHITELISTED_COMMANDS = {
   'audit': { file: 'git', args: ['status', '--porcelain'], label: 'Audit Integrità Repository' }
 };
 
+// Invia un messaggio all'agente come VERO messaggio utente nella chat di Antigravity.
+// (agentapi send-message crea un SYSTEM_MESSAGE nascosto: l'alert appare ma il testo
+//  non si vede nella conversation UI. Questa RPC crea invece un USER_INPUT visibile.)
+function sendUserMessageToAgent(sessionId, text, daemonCfg) {
+  return new Promise((resolve, reject) => {
+    if (!daemonCfg || !daemonCfg.httpPort || !daemonCfg.csrfToken) {
+      reject(new Error('Antigravity daemon non disponibile'));
+      return;
+    }
+    const payload = JSON.stringify({
+      cascadeId: sessionId,
+      items: [{ text: String(text) }],
+      continueExecution: true
+    });
+    const req = http.request({
+      hostname: '127.0.0.1',
+      port: daemonCfg.httpPort,
+      path: '/exa.language_server_pb.LanguageServerService/SendUserCascadeMessage',
+      method: 'POST',
+      timeout: 15000,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-codeium-csrf-token': daemonCfg.csrfToken,
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    }, res => {
+      let raw = '';
+      res.on('data', chunk => { raw += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) resolve(raw);
+        else {
+          let msg = raw;
+          try { msg = JSON.parse(raw).message || raw; } catch {}
+          reject(new Error(msg || `HTTP ${res.statusCode}`));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    req.end(payload);
+  });
+}
+
 // Command Bridge Reale: esecuzione effettiva e dispatching
 function dispatchRealTask(agent, rawInput) {
   const text = (rawInput || '').trim().slice(0, 500);
@@ -287,74 +330,59 @@ function dispatchRealTask(agent, rawInput) {
       }
     }
 
-    // Invia direttamente tramite l'eseguibile nativo language_server agentapi send-message
-    const serverExe = resolveLanguageServer();
+    // Invia come VERO messaggio utente nella chat di Antigravity (visibile nella UI)
     const activeProj = routing.getTargetProject();
-    const msgContent = `[Progetto Target Attivo: ${activeProj}] Messaggio operativo dalla Dashboard Web Easy Agent Office: ${text}`;
+    const msgContent = `[Active project: ${activeProj}] Task from Easy Agent Office: ${text}`;
 
-    // Risoluzione dinamica delle variabili d'ambiente necessarie a language_server.exe
-    // quando il server viene lanciato come demone indipendente o script di background
-    getActiveDaemonConfig().then(daemonCfg => {
-      const childEnv = Object.assign({}, process.env);
-      if (daemonCfg && daemonCfg.httpPort) {
-        childEnv.ANTIGRAVITY_LS_ADDRESS = `127.0.0.1:${daemonCfg.httpPort}`;
-      }
-      if (daemonCfg && daemonCfg.csrfToken) {
-        childEnv.ANTIGRAVITY_CSRF_TOKEN = daemonCfg.csrfToken;
-      }
+    function finishTask(success, detail) {
+      const finishTime = new Date();
+      const exitCode = success ? 0 : 1;
+      taskEntry.status = success ? 'dispatched' : 'failed';
+      taskEntry.exitCode = exitCode;
+      taskEntry.output = success
+        ? 'Task delivered to Antigravity. You can see it in the chat and here.'
+        : `Could not deliver task: ${detail}`;
+      saveTaskQueue(tasks);
 
-      execFile(serverExe, ['agentapi', 'send-message', targetSubagentId, msgContent], { timeout: 15000, windowsHide: true, env: childEnv }, (apiErr, apiStdout, apiStderr) => {
-        const finishTime = new Date();
-        const exitCode = apiErr ? 1 : 0;
-        const apiOut = (apiStdout || apiStderr || '').trim();
-        const success = exitCode === 0;
+      const logEnd = `[${finishTime.toLocaleTimeString()}] ${success ? '✔' : '✖'} ${taskEntry.output}`;
+      agent.logs.push(logEnd);
 
-        taskEntry.status = success ? 'dispatched' : 'failed';
-        taskEntry.exitCode = exitCode;
-        taskEntry.output = success 
-          ? `Task recapitato al subagent (${agent.name}). Elaborazione in corso su Antigravity...`
-          : `Errore inoltro: ${apiOut || (apiErr ? apiErr.message : 'timeout')}`;
-        saveTaskQueue(tasks);
+      sendDiscordNotification(agent.name, `**New task:**\n${text}\n\n*${taskEntry.output}*`, success ? 0x2ea043 : 0xda3633);
 
-        const logEnd = `[${finishTime.toLocaleTimeString()}] ${success ? '✔' : '✖'} ${taskEntry.output}`;
-        agent.logs.push(logEnd);
-
-        // Replicazione automatica su Discord se attivo
-        sendDiscordNotification(agent.name, `**Nuovo Task Inoltrato:**\n${text}\n\n*${taskEntry.output}*`, success ? 0x2ea043 : 0xda3633);
-
-        broadcast({
-          type: 'commandResult',
-          id: agent.id,
-          agentId: agent.id,
-          taskId: taskId,
-          command: text,
-          output: taskEntry.output,
-          exitCode: exitCode,
-          time: finishTime.toLocaleTimeString()
-        });
-
-        broadcast({
-          type: 'agentActivity',
-          id: agent.id,
-          agentId: agent.id,
-          tool: 'Antigravity Chat',
-          status: success ? 'In elaborazione su Antigravity' : 'Errore recapito',
-          log: logEnd
-        });
-
-        // Mantiene l'animazione di lavoro finché il monitor live transcript non intercetta la risposta
-        setTimeout(() => {
-          broadcast({
-            type: 'agentToolDone',
-            id: agent.id,
-            agentId: agent.id,
-            toolId: toolId
-          });
-        }, 1000);
+      broadcast({
+        type: 'commandResult',
+        id: agent.id,
+        agentId: agent.id,
+        taskId: taskId,
+        command: text,
+        output: taskEntry.output,
+        exitCode: exitCode,
+        time: finishTime.toLocaleTimeString()
       });
-    }).catch(daemonErr => {
-      console.error('[Bridge] Errore risoluzione daemon config:', daemonErr.message);
-    });
+
+      broadcast({
+        type: 'agentActivity',
+        id: agent.id,
+        agentId: agent.id,
+        tool: 'Antigravity Chat',
+        status: success ? 'Working in Antigravity' : 'Delivery error',
+        log: logEnd
+      });
+
+      setTimeout(() => {
+        broadcast({
+          type: 'agentToolDone',
+          id: agent.id,
+          agentId: agent.id,
+          toolId: toolId
+        });
+      }, 1000);
+    }
+
+    getActiveDaemonConfig()
+      .then(daemonCfg => sendUserMessageToAgent(targetSubagentId, msgContent, daemonCfg))
+      .then(() => finishTask(true))
+      .catch(err => finishTask(false, err && err.message ? err.message : String(err)));
   }
 }
 
