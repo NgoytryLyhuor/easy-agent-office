@@ -2,7 +2,13 @@
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <script>if (new URLSearchParams(location.search).has('embed')) document.documentElement.classList.add('embed-mode');</script>
+    <script>
+      if (new URLSearchParams(location.search).has('embed')) {
+        document.documentElement.classList.add('embed-mode');
+      } else if (window === window.top) {
+        location.replace('/');
+      }
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Easy Agent Office — Sala Operativa Ufficiale</title>
     <link rel="manifest" href="/manifest.json" />

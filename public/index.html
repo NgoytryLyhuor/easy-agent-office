@@ -68,11 +68,11 @@
       padding: 6px 12px; border-radius: 7px; font-weight: 600; font-size: 13px;
     }
     .lang-switch button.active { background: var(--blue); color: #fff; }
-    .icon-btn, .ghost-btn {
+    .icon-btn {
       border: 1px solid var(--line); background: var(--card2); color: var(--text);
       padding: 8px 12px; border-radius: 10px; font-weight: 600; text-decoration: none; font-size: 13px;
     }
-    .icon-btn:hover, .ghost-btn:hover { border-color: var(--blue); }
+    .icon-btn:hover { border-color: var(--blue); }
 
     .layout {
       display: grid; grid-template-columns: minmax(0, 1fr) 372px;
@@ -183,7 +183,6 @@
         <button id="btn-km" data-lang="km">ខ្មែរ</button>
       </div>
       <button id="btn-help" class="icon-btn">❓ <span data-i18n="help">Help</span></button>
-      <a class="ghost-btn" href="/full.html" target="_blank" data-i18n="fullVersion">Full version</a>
     </div>
   </header>
 
@@ -253,8 +252,8 @@
       <p data-i18n="help3"><b>Call a meeting</b> = everyone gathers together for a moment.</p>
       <p data-i18n="help4"><b>Send task</b> = real work. The agent will use your AI quota and can edit files.</p>
       <p data-i18n="help5"><b>What's happening</b> = live messages from your agents, copied from Antigravity.</p>
-      <p data-i18n="help6"><b>Layout</b> (Full version only) = drag furniture to rearrange the office. <b>Settings</b> = sound and display options. You do not need either one to give tasks.</p>
-      <p class="note" data-i18n="helpNote">Need every advanced setting? Open "Full version" in the top-right corner.</p>
+      <p data-i18n="help6"><b>Layout</b> and <b>Settings</b> are advanced controls from the original canvas. They are hidden here because you do not need them to give tasks.</p>
+      <p class="note" data-i18n="helpNote">Everything you need is right here on this screen.</p>
       <button id="btnCloseHelp" class="primary" data-i18n="close">Close</button>
     </div>
   </div>
@@ -263,7 +262,7 @@
     const I18N = {
       en: {
         appName: 'Easy Agent Office', tagline: 'Watch your AI workers work',
-        help: 'Help', fullVersion: 'Full version', liveOffice: 'Your office — live',
+        help: 'Help', liveOffice: 'Your office — live',
         tip: "Click a worker's name to give them a task", workers: 'Your AI workers',
         giveTask: 'Give a task', taskPlaceholder: 'Type a task here... (e.g. create a login page)',
         send: 'Send task', quickActions: 'Quick actions', delegation: 'Watch delegation',
@@ -280,14 +279,14 @@
         help3: '<b>Call a meeting</b> = everyone gathers together for a moment.',
         help4: '<b>Send task</b> = real work. The agent will use your AI quota and can edit files.',
         help5: '<b>What’s happening</b> = live messages from your agents, copied from Antigravity.',
-        help6: '<b>Layout</b> (Full version only) = drag furniture to rearrange the office. <b>Settings</b> = sound and display options. You do not need either one to give tasks.',
-        helpNote: 'Need every advanced setting? Open "Full version" in the top-right corner.',
+        help6: '<b>Layout</b> and <b>Settings</b> are advanced controls from the original canvas. They are hidden here because you do not need them to give tasks.',
+        helpNote: 'Everything you need is right here on this screen.',
         close: 'Close', selected: 'Sending task to:',
         roles: { 10: 'Boss / organizer', 6: 'Backend developer', 7: 'Frontend developer', 8: 'QA / tester' }
       },
       km: {
         appName: 'ការិយាល័យ AI ងាយៗ', tagline: 'មើលអ្នកធ្វើការ AI របស់អ្នកធ្វើការ',
-        help: 'ជំនួយ', fullVersion: 'កំណែពេញលេញ', liveOffice: 'ការិយាល័យរបស់អ្នក — ផ្ទាល់',
+        help: 'ជំនួយ', liveOffice: 'ការិយាល័យរបស់អ្នក — ផ្ទាល់',
         tip: 'ចុចឈ្មោះអ្នកធ្វើការ ដើម្បីផ្ញើកិច្ចការ', workers: 'អ្នកធ្វើការ AI របស់អ្នក',
         giveTask: 'ផ្តល់កិច្ចការ', taskPlaceholder: 'វាយកិច្ចការនៅទីនេះ... (ឧទាហរណ៍៖ បង្កើតទំព័រចូល)',
         send: 'ផ្ញើកិច្ចការ', quickActions: 'សកម្មភាពរហ័ស', delegation: 'មើលការចាត់កិច្ចការ',
@@ -304,8 +303,8 @@
         help3: '<b>ហៅប្រជុំ</b> = គ្រប់គ្នាមកជួបគ្នាមួយភ្លែត។',
         help4: '<b>ផ្ញើកិច្ចការ</b> = ការងារពិត។ ភ្នាក់ងារនឹងប្រើកូតារបស់អ្នក ហើយអាចកែប្រែឯកសារ។',
         help5: '<b>អ្វីកំពុងកើតឡើង</b> = សារផ្ទាល់ពីភ្នាក់ងារ យកមកពី Antigravity។',
-        help6: '<b>Layout</b> (មានតែក្នុងកំណែពេញលេញ) = អូសគ្រឿងសង្ហារិមដើម្បីរៀបការិយាល័យ។ <b>Settings</b> = ជម្រើសសំឡេង និងការបង្ហាញ។ អ្នកមិនចាំបាច់ប្រើវាទេ ដើម្បីផ្ញើកិច្ចការ។',
-        helpNote: 'ចង់បានការកំណត់ទាំងអស់? បើក "កំណែពេញលេញ" នៅជ្រុងខាងស្តាំលើ។',
+        help6: '<b>Layout</b> និង <b>Settings</b> ជាការកំណត់កម្រិតខ្ពស់ពីផ្ទាំងដើម។ វាត្រូវបានលាក់នៅទីនេះ ព្រោះអ្នកមិនចាំបាច់ប្រើវាដើម្បីផ្ញើកិច្ចការ។',
+        helpNote: 'អ្វីដែលអ្នកត្រូវការគឺនៅលើអេក្រង់នេះ។',
         close: 'បិទ', selected: 'កំពុងផ្ញើកិច្ចការទៅ៖',
         roles: { 10: 'អ្នកគ្រប់គ្រង', 6: 'អ្នកសរសេរ Backend', 7: 'អ្នកសរសេរ Frontend', 8: 'អ្នកពិនិត្យកូដ (QA)' }
       }
