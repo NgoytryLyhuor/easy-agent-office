@@ -1047,6 +1047,10 @@
       .embed-mode #office-frame-container {
         width: 100vw !important; height: 100vh !important;
       }
+      /* Hide the canvas "+ Agent / Layout / Settings" toolbar in Simple Mode */
+      .embed-mode div[class*="pixel-panel"][class*="left-10"][class*="bottom-10"] {
+        display: none !important;
+      }
     </style>
   </head>
   <body>

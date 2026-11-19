@@ -52,6 +52,10 @@ every word in plain language.
 Text uses **Nunito** for English and **Kantumruy Pro** for ខ្មែរ. Both fonts are bundled
 locally, so the UI looks the same even without internet.
 
+The original canvas had **Layout** and **Settings** buttons. They are hidden in Simple
+Mode because you do not need them: *Layout* only rearranges furniture, and *Settings* only
+changes sound/display options. Both are still available in **Full version**.
+
 Need every advanced setting? Open **Full version** in the top-right — the original
 dashboard is kept there at `/full.html`.
 

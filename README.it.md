@@ -45,6 +45,10 @@ in linguaggio semplice.
 Il testo usa **Nunito** per l'inglese e **Kantumruy Pro** per il khmer. Entrambi i font
 sono inclusi localmente, quindi l'interfaccia resta identica anche senza internet.
 
+Il canvas originale aveva i pulsanti **Layout** e **Settings**. Nella modalità semplice
+sono nascosti perché non servono: *Layout* sposta solo i mobili, *Settings* cambia solo
+suono e opzioni di visualizzazione. Entrambi restano disponibili in **Full version**.
+
 Ti servono tutte le impostazioni? Apri **Full version** in alto a destra:
 la dashboard originale è disponibile su `/full.html`.
 
