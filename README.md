@@ -49,6 +49,9 @@ Use the **English / ខ្មែរ** switch in the top-right to change language
 A short welcome guide appears on your first visit, and the ❓ Help button explains
 every word in plain language.
 
+Text uses **Nunito** for English and **Kantumruy Pro** for ខ្មែរ. Both fonts are bundled
+locally, so the UI looks the same even without internet.
+
 Need every advanced setting? Open **Full version** in the top-right — the original
 dashboard is kept there at `/full.html`.
 

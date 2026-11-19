@@ -42,6 +42,9 @@ Usa l'interruttore **English / ខ្មែរ** in alto a destra per cambiare l
 Al primo accesso appare una breve guida, e il pulsante ❓ Help spiega ogni parola
 in linguaggio semplice.
 
+Il testo usa **Nunito** per l'inglese e **Kantumruy Pro** per il khmer. Entrambi i font
+sono inclusi localmente, quindi l'interfaccia resta identica anche senza internet.
+
 Ti servono tutte le impostazioni? Apri **Full version** in alto a destra:
 la dashboard originale è disponibile su `/full.html`.
 

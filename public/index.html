@@ -5,6 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Easy Agent Office</title>
   <style>
+    /* ===== FONTS: Nunito for English, Kantumruy Pro for Khmer (bundled locally) ===== */
+    @font-face {
+      font-family: 'Nunito';
+      src: url('/fonts/nunito-latin.woff2') format('woff2');
+      font-weight: 400 800;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Kantumruy Pro';
+      src: url('/fonts/kantumruy-pro-khmer.woff2') format('woff2');
+      font-weight: 400 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    *, *::before, *::after {
+      font-family: 'Nunito', 'Kantumruy Pro', 'Segoe UI', sans-serif !important;
+    }
+    html[lang="km"] body { font-size: 16px; }
+
     :root {
       --bg: #0b1017;
       --card: #141b26;
@@ -21,8 +41,8 @@
     html, body { height: 100%; }
     body {
       margin: 0; background: var(--bg); color: var(--text);
-      font-family: "Segoe UI", system-ui, -apple-system, "Noto Sans Khmer", "Khmer OS", sans-serif;
-      font-size: 15px; line-height: 1.5;
+      font-family: 'Nunito', 'Kantumruy Pro', 'Segoe UI', sans-serif !important;
+      font-size: 15px; line-height: 1.65;
     }
     button, textarea { font: inherit; }
     button { cursor: pointer; }

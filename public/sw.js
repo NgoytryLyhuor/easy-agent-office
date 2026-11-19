@@ -1,10 +1,12 @@
 // Service Worker per Easy Agent Office PWA
-const CACHE_NAME = 'easy-agent-office-pwa-v4';
+const CACHE_NAME = 'easy-agent-office-pwa-v5';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
   '/icons/icon-256.png',
-  '/icons/icon-512.png'
+  '/icons/icon-512.png',
+  '/fonts/nunito-latin.woff2',
+  '/fonts/kantumruy-pro-khmer.woff2'
 ];
 
 self.addEventListener('install', (event) => {
