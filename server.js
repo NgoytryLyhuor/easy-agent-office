@@ -681,8 +681,8 @@ const DEFAULT_TEAM = [
     directoryName: 'Easy Agent Office',
     status: 'online',
     logs: [
-      `[${new Date().toLocaleTimeString()}] Alberto (CEO) ha assunto il comando operativo.`,
-      `[${new Date().toLocaleTimeString()}] Orchestrazione permanente del team attiva.`
+      `[${new Date().toLocaleTimeString()}] Alberto (CEO) is in charge and ready.`,
+      `[${new Date().toLocaleTimeString()}] Team coordination is active.`
     ]
   },
   {
@@ -699,8 +699,8 @@ const DEFAULT_TEAM = [
     directoryName: 'Easy Agent Office',
     status: 'online',
     logs: [
-      `[${new Date().toLocaleTimeString()}] Luigi ha sincronizzato il server HTTP/WebSocket.`,
-      `[${new Date().toLocaleTimeString()}] Protocollo asset pixel e terminali operativi.`
+      `[${new Date().toLocaleTimeString()}] Luigi's HTTP/WebSocket server is in sync.`,
+      `[${new Date().toLocaleTimeString()}] Pixel assets and terminal tools are ready.`
     ]
   },
   {
@@ -717,8 +717,8 @@ const DEFAULT_TEAM = [
     directoryName: 'Easy Agent Office',
     status: 'online',
     logs: [
-      `[${new Date().toLocaleTimeString()}] Gabri ha renderizzato la sala operativa pixel art.`,
-      `[${new Date().toLocaleTimeString()}] Interfaccia webview reattiva pronta.`
+      `[${new Date().toLocaleTimeString()}] Gabri rendered the pixel office room.`,
+      `[${new Date().toLocaleTimeString()}] The responsive web interface is ready.`
     ]
   },
   {
@@ -735,8 +735,8 @@ const DEFAULT_TEAM = [
     directoryName: 'Easy Agent Office',
     status: 'online',
     logs: [
-      `[${new Date().toLocaleTimeString()}] Carlo operativo con verifica rigorosa canali RGBA.`,
-      `[${new Date().toLocaleTimeString()}] Audit di sicurezza: integrità al 100%.`
+      `[${new Date().toLocaleTimeString()}] Carlo is on duty checking pixel channels.`,
+      `[${new Date().toLocaleTimeString()}] Security check passed: 100% integrity.`
     ]
   }
 ];
@@ -1978,7 +1978,7 @@ function formatToolDesc(call) {
   if (args.toolSummary) {
     detail = String(args.toolSummary).replace(/^"|"$/g, '').trim();
   } else if (args.Path) {
-    detail = path.basename(String(args.Path));
+    detail = path.basename(String(args.Path).replace(/^"|"$/g, ''));
   } else if (args.CommandLine) {
     const cmd = String(args.CommandLine).replace(/^"|"$/g, '').replace(/\r?\n/g, ' ').trim();
     detail = cmd.length > 70 ? cmd.slice(0, 67) + '...' : cmd;
@@ -1989,7 +1989,7 @@ function formatToolDesc(call) {
     const p = (typeof args.Prompt === 'string' ? args.Prompt : JSON.stringify(args.Prompt)).replace(/\r?\n/g, ' ').trim();
     detail = p.length > 70 ? p.slice(0, 67) + '...' : p;
   }
-  return detail ? `${call.name} -> ${detail}` : `Eseguo: ${call.name}`;
+  return detail ? `${call.name} -> ${detail}` : `Running: ${call.name}`;
 }
 
 // Pre-carica i log recenti storici dai file transcript di Antigravity

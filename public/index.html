@@ -141,6 +141,10 @@
 
     .logs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 190px; overflow-y: auto; }
     .logs li { background: var(--card2); border-radius: 8px; padding: 7px 10px; font-size: 12px; color: #cbd6e5; word-break: break-word; }
+    .logs li.you { border-left: 3px solid #7aa2ff; }
+    .logs li.reply { border-left: 3px solid #46d39a; color: #eaf7f0; }
+    .logs li.you b, .logs li.reply b { display: block; font-size: 11px; opacity: .75; margin-bottom: 2px; }
+    .logs li.empty { color: #8a99ad; font-style: italic; }
 
     .overlay { position: fixed; inset: 0; background: rgba(4,8,14,.78); display: grid; place-items: center; z-index: 50; padding: 18px; }
     .overlay.hidden { display: none; }
@@ -412,22 +416,68 @@
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) document.getElementById('btnSend').click();
     });
 
-    function pollLogs() {
+    // Show the SELECTED worker's real activity from the server, not the hidden
+    // iframe's drawer (that drawer belongs to whichever agent was last selected
+    // inside the full dashboard — usually Luigi — so it showed the wrong person).
+    let lastLogSig = '';
+    const plain = s => String(s).replace(/\*\*/g, '').replace(/`/g, '').replace(/—/g, '-');
+    function cleanLog(raw) {
+      const m = raw.match(/^\[([^\]]+)\]\s*(.*)$/);
+      const time = m ? m[1] : '';
+      let body = m ? m[2] : raw;
+      const ask = lang === 'km' ? 'អ្នកសួរ៖' : 'You asked:';
+      const reply = lang === 'km' ? 'ចម្លើយ៖' : 'Reply:';
+      const working = lang === 'km' ? 'កំពុងធ្វើការ...' : 'Working on it...';
+
+      if (/^Focus su /.test(body)) return null;
+      if (/^.*Inoltro messaggio reale/.test(body)) return null;
+      if (/Operazione completata/.test(body)) return null;
+
+      let q = body.match(/^.*Avvio esecuzione reale:\s*"?([\s\S]*?)"?$/);
+      if (q) return { kind: 'you', label: ask, text: q[1], time };
+
+      if (/Task recapitato al subagent/.test(body)) return { kind: 'status', text: working, time };
+
+      if (body.startsWith('\uD83D\uDCAC')) {
+        return { kind: 'reply', label: reply, text: plain(body.replace(/^\uD83D\uDCAC\s*/, '')), time };
+      }
+      return { kind: 'info', text: plain(body), time };
+    }
+
+    async function pollLogs() {
+      const list = document.getElementById('logList');
       try {
-        const doc = office.contentDocument;
-        const el = doc && doc.getElementById('drawer-logs');
-        const list = document.getElementById('logList');
-        if (el) {
-          const lines = el.innerText.split('\n').map(s => s.trim()).filter(Boolean).slice(-7).reverse();
-          if (lines.length) {
-            list.innerHTML = '';
-            lines.forEach(line => {
-              const li = document.createElement('li');
-              li.textContent = line.length > 150 ? line.slice(0, 147) + '...' : line;
-              list.appendChild(li);
-            });
-          }
+        const res = await fetch('/api/team', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const agent = (data.team || []).find(a => a.id === selectedId);
+        const rawLogs = (agent && agent.logs) ? agent.logs : [];
+        const entries = rawLogs.map(cleanLog).filter(Boolean).slice(-6).reverse();
+        const sig = lang + '|' + selectedId + '|' + entries.map(e => e.text).join('|');
+        if (sig === lastLogSig) return;
+        lastLogSig = sig;
+
+        list.innerHTML = '';
+        if (!entries.length) {
+          const li = document.createElement('li');
+          li.className = 'empty';
+          li.textContent = lang === 'km'
+            ? 'មិនទាន់មានសកម្មភាពទេ។ ផ្ញើកិច្ចការដើម្បីចាប់ផ្តើម។'
+            : 'No activity yet. Send a task to get started.';
+          list.appendChild(li);
+          return;
         }
+        entries.forEach(e => {
+          const li = document.createElement('li');
+          li.className = e.kind;
+          if (e.label) {
+            const b = document.createElement('b');
+            b.textContent = e.label + (e.time ? '  [' + e.time + ']' : '');
+            li.appendChild(b);
+          }
+          li.appendChild(document.createTextNode(e.text.length > 260 ? e.text.slice(0, 257) + '...' : e.text));
+          list.appendChild(li);
+        });
       } catch (e) {}
     }
 
