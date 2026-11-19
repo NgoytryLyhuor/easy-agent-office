@@ -103,11 +103,11 @@ try {
 } catch (_) {}
 
 // ====================================================================
-// SICUREZZA & MODERAZIONE DISCORD — ACCESSO ESCLUSIVO ALBERTOESPO
-// I membri con ruolo 'Cooksnkrs' e generici hanno accesso in SOLA LETTURA
+// SICUREZZA & MODERAZIONE DISCORD — ACCESSO ESCLUSIVO YOUR_DISCORD_USERNAME
+// I membri con ruolo 'Members' e generici hanno accesso in SOLA LETTURA
 // ====================================================================
-const AUTHORIZED_USERS = ['albertoespo'];
-const RESTRICTED_ROLES = ['cooksnkrs'];
+const AUTHORIZED_USERS = ['YOUR_DISCORD_USERNAME'];
+const RESTRICTED_ROLES = ['members'];
 
 function isUserAuthorized(userOrMember, guild = null) {
   if (!userOrMember) return false;
@@ -137,13 +137,13 @@ function isUserAuthorized(userOrMember, guild = null) {
       }
     }
 
-    // Ruoli autorizzati (es. 'CEO', 'Alberto', 'AziendaAI Admin')
+    // Ruoli autorizzati (es. 'CEO', 'Alberto', 'Easy Agent Office Admin')
     if (member.roles && member.roles.cache) {
       const roleNames = (Array.isArray(member.roles.cache) ? member.roles.cache : Array.from(member.roles.cache.values ? member.roles.cache.values() : member.roles.cache)).map(r => String(r.name || '').toLowerCase());
-      if (roleNames.some(r => r === 'ceo' || r === 'alberto' || r === 'aziendaai admin' || r === 'autorizzato')) {
+      if (roleNames.some(r => r === 'ceo' || r === 'alberto' || r === 'easy-agent-office admin' || r === 'autorizzato')) {
         return true;
       }
-      // Se ha il ruolo ristretto 'Cooksnkrs' e nessun ruolo admin
+      // Se ha il ruolo ristretto 'Members' e nessun ruolo admin
       if (roleNames.some(r => RESTRICTED_ROLES.includes(r))) {
         return false;
       }
@@ -172,10 +172,10 @@ async function applyChannelModerationPermissions(guild) {
     await guild.roles.fetch().catch(() => {});
     await guild.members.fetch().catch(() => {});
 
-    // Ricerca ruolo Cooksnkrs
-    const cooksnkrsRole = guild.roles.cache.find(r => String(r.name || '').toLowerCase() === 'cooksnkrs');
-    // Ricerca utente autorizzato albertoespo
-    const albertoMember = guild.members.cache.find(m => m.user && String(m.user.username || '').toLowerCase() === 'albertoespo');
+    // Ricerca ruolo Members
+    const membersRole = guild.roles.cache.find(r => String(r.name || '').toLowerCase() === 'members');
+    // Ricerca utente autorizzato YOUR_DISCORD_USERNAME
+    const albertoMember = guild.members.cache.find(m => m.user && String(m.user.username || '').toLowerCase() === 'YOUR_DISCORD_USERNAME');
     const everyoneRole = guild.roles.everyone;
 
     const managedKeywords = ['alberto', 'ceo', 'luigi', 'backend', 'gabri', 'frontend', 'carlo', 'qa', 'security', 'sala-operativa', 'pannello-controllo', 'monitor-usage'];
@@ -202,10 +202,10 @@ async function applyChannelModerationPermissions(guild) {
           });
         }
 
-        // 2. Ruolo Cooksnkrs: sola lettura tassativa (SendMessages: false, AddReactions: false)
-        if (cooksnkrsRole) {
+        // 2. Ruolo Members: sola lettura tassativa (SendMessages: false, AddReactions: false)
+        if (membersRole) {
           overwrites.push({
-            id: cooksnkrsRole.id,
+            id: membersRole.id,
             allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory],
             deny: [
               PermissionFlagsBits.SendMessages,
@@ -217,7 +217,7 @@ async function applyChannelModerationPermissions(guild) {
           });
         }
 
-        // 3. Utente autorizzato albertoespo: permessi completi di scrittura e interazione
+        // 3. Utente autorizzato YOUR_DISCORD_USERNAME: permessi completi di scrittura e interazione
         if (albertoMember) {
           overwrites.push({
             id: albertoMember.id,
@@ -262,7 +262,7 @@ async function applyChannelModerationPermissions(guild) {
     return {
       ok: true,
       channelsConfigured: configuredCount,
-      roleFound: Boolean(cooksnkrsRole),
+      roleFound: Boolean(membersRole),
       albertoFound: Boolean(albertoMember)
     };
   } catch (err) {
@@ -589,7 +589,7 @@ async function sendDiscordImage(agentIdOrChannelName, imagePath, caption = '') {
           .setDescription(caption ? caption.slice(0, 2000) : `Allegato: \`${valid.filename}\``)
           .setColor(agentEntry.color)
           .setImage(`attachment://${valid.filename}`)
-          .setFooter({ text: 'AziendaAI • Output Multimodale' })
+          .setFooter({ text: 'Easy Agent Office • Output Multimodale' })
           .setTimestamp();
 
         await channel.send({ embeds: [embed], files: [attachment] });
@@ -665,7 +665,7 @@ function buildPanelActionRows() {
 
 function getControlPanelEmbed() {
   return new EmbedBuilder()
-    .setTitle('🎛️ Centro di Comando Rapido — AziendaAI')
+    .setTitle('🎛️ Centro di Comando Rapido — Easy Agent Office')
     .setDescription('Seleziona un pulsante per impartire un ordine immediato ad **Alberto (CEO)**.\nOgni richiesta verrà inoltrata nella sua chat operativa.')
     .setColor(0x58a6ff)
     .addFields(
@@ -680,7 +680,7 @@ function getControlPanelEmbed() {
       { name: '🐙 Git Check', value: 'Verifica branch e modifiche git', inline: true },
       { name: '🔄 Aggiorna Quote', value: 'Sincronizza telemetria quote live', inline: true }
     )
-    .setFooter({ text: 'AziendaAI Control Panel • Digita !panel per rigenerare questo pannello' })
+    .setFooter({ text: 'Easy Agent Office Control Panel • Digita !panel per rigenerare questo pannello' })
     .setTimestamp();
 }
 
@@ -760,7 +760,7 @@ async function handleProjectCommand(messageOrContext, broadcastFn = null) {
   // 1. Controllo Rigoroso RBAC
   const authorized = isUserAuthorized(member || author, guild);
   if (!authorized) {
-    const errText = '⛔ **Accesso non autorizzato:** Solo **albertoespo** ha i permessi di gestione e switch dei progetti software in AziendaAI.';
+    const errText = '⛔ **Accesso non autorizzato:** Solo **YOUR_DISCORD_USERNAME** ha i permessi di gestione e switch dei progetti software in Easy Agent Office.';
     await replyFn({ content: errText, error: 'UNAUTHORIZED' });
     return { ok: false, error: 'UNAUTHORIZED', message: errText };
   }
@@ -967,17 +967,17 @@ function initDiscordBot(onBroadcast) {
     if (message.author.bot) return;
 
     // CONTROLLO DI SICUREZZA & MODERAZIONE DISCORD
-    // Solo l'utente autorizzato ('albertoespo') o membri con ruoli amministrativi possono interagire
+    // Solo l'utente autorizzato ('YOUR_DISCORD_USERNAME') o membri con ruoli amministrativi possono interagire
     const isAuthorized = isUserAuthorized(message.member || message.author, message.guild);
     const content = message.content.trim();
     const channelName = message.channel.name ? message.channel.name.toLowerCase() : '';
 
-    // Comando manuale per riapplicare i permessi del server se invocato da albertoespo
+    // Comando manuale per riapplicare i permessi del server se invocato da YOUR_DISCORD_USERNAME
     if (isAuthorized && (content.toLowerCase() === '!securechannels' || content.toLowerCase() === '!lockdown' || content.toLowerCase() === '!permessi')) {
       if (message.guild) {
         const res = await applyChannelModerationPermissions(message.guild);
         if (res.ok) {
-          await message.channel.send(`🛡️ **Permessi di moderazione applicati sui canali aziendali!**\n• Canali protetti: \`${res.channelsConfigured}\`\n• Ruolo \`Cooksnkrs\`: ${res.roleFound ? '🔒 Sola lettura applicata (scrittura e reazioni vietate)' : 'ℹ️ Ruolo non presente sul server'}\n• Utente \`albertoespo\`: ${res.albertoFound ? '✅ Accesso completo scrittura/comandi accordato' : 'ℹ️ Non presente nella cache membri'}`).catch(() => {});
+          await message.channel.send(`🛡️ **Permessi di moderazione applicati sui canali aziendali!**\n• Canali protetti: \`${res.channelsConfigured}\`\n• Ruolo \`Members\`: ${res.roleFound ? '🔒 Sola lettura applicata (scrittura e reazioni vietate)' : 'ℹ️ Ruolo non presente sul server'}\n• Utente \`YOUR_DISCORD_USERNAME\`: ${res.albertoFound ? '✅ Accesso completo scrittura/comandi accordato' : 'ℹ️ Non presente nella cache membri'}`).catch(() => {});
         } else {
           await message.channel.send(`⚠️ Errore applicazione permessi canali: ${res.error}`).catch(() => {});
         }
@@ -992,7 +992,7 @@ function initDiscordBot(onBroadcast) {
       }
       const isAgentChannel = ['alberto', 'ceo', 'luigi', 'backend', 'gabri', 'frontend', 'carlo', 'qa', 'security', 'sala-operativa'].some(k => channelName.includes(k));
       if (content.startsWith('!') || isAgentChannel) {
-        await message.reply('⛔ **Accesso non autorizzato:** Solo **albertoespo** ha i permessi di scrittura e comando nei canali operativi di AziendaAI. I membri del ruolo `Cooksnkrs` hanno accesso in sola lettura.').catch(() => {});
+        await message.reply('⛔ **Accesso non autorizzato:** Solo **YOUR_DISCORD_USERNAME** ha i permessi di scrittura e comando nei canali operativi di Easy Agent Office. I membri del ruolo `Members` hanno accesso in sola lettura.').catch(() => {});
         return;
       }
       return;
@@ -1316,7 +1316,7 @@ function initDiscordBot(onBroadcast) {
     // CONTROLLO DI SICUREZZA & MODERAZIONE DISCORD PER PULSANTI
     if (!isUserAuthorized(interaction.member || interaction.user, interaction.guild)) {
       await interaction.reply({
-        content: '⛔ **Accesso negato:** Solo **albertoespo** ha i permessi di interazione nel Centro di Comando AziendaAI. I membri del ruolo `Cooksnkrs` hanno accesso in sola lettura.',
+        content: '⛔ **Accesso negato:** Solo **YOUR_DISCORD_USERNAME** ha i permessi di interazione nel Centro di Comando Easy Agent Office. I membri del ruolo `Members` hanno accesso in sola lettura.',
         ephemeral: true
       }).catch(() => {});
       return;
@@ -1444,7 +1444,7 @@ function initDiscordBot(onBroadcast) {
                 : '*Nessun custom tool registrato*';
 
               const memEmbed = new EmbedBuilder()
-                .setTitle('🧬 Memoria Aziendale & Grafo Competenze — AziendaAI')
+                .setTitle('🧬 Memoria Aziendale & Grafo Competenze — Easy Agent Office')
                 .setDescription('Riepilogo delle regole operative, preferenze e competenze attive nel sistema auto-evolutivo.')
                 .setColor(0x2ea043)
                 .addFields(
@@ -1577,7 +1577,7 @@ function sendFinalAgentResponse(agentId, text) {
     .setTitle(`💬 Risposta di ${agentEntry.name}`)
     .setDescription(cleanText.slice(0, 3950))
     .setColor(agentEntry.color)
-    .setFooter({ text: 'AziendaAI • Lavoro completato' })
+    .setFooter({ text: 'Easy Agent Office • Lavoro completato' })
     .setTimestamp();
 
   // Outbound image detection: controlla se la risposta dell'agente contiene riferimenti a immagini locali
@@ -1798,7 +1798,7 @@ async function checkPredictiveBurnoutAlert(predictiveData, clientOverride = null
         inline: false
       }
     )
-    .setFooter({ text: 'AziendaAI Predictive Engine • Innovazione #3 • Cooldown 2 ore' })
+    .setFooter({ text: 'Easy Agent Office Predictive Engine • Innovazione #3 • Cooldown 2 ore' })
     .setTimestamp(new Date(now));
 
   let sent = false;
@@ -1883,7 +1883,7 @@ async function updateDiscordUsageMonitor(quotaData) {
     .setDescription('Stato delle quote e allocazione modelli in tempo reale rilevati direttamente dal Language Server di Antigravity.')
     .setColor(0x58a6ff)
     .addFields(fields)
-    .setFooter({ text: 'AziendaAI Telemetry • Aggiornato in tempo reale' })
+    .setFooter({ text: 'Easy Agent Office Telemetry • Aggiornato in tempo reale' })
     .setTimestamp();
 
   for (const guild of client.guilds.cache.values()) {

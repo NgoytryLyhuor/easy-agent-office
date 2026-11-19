@@ -39,8 +39,8 @@ function sendDiscordNotification(agentName, text, color = 0x58a6ff) {
 
   try {
     const payload = JSON.stringify({
-      username: `AziendaAI - ${agentName}`,
-      avatar_url: 'https://raw.githubusercontent.com/nev3rquit/AziendaAI/main/public/favicon.ico',
+      username: `Easy Agent Office - ${agentName}`,
+      avatar_url: 'http://localhost:3000/favicon.ico',
       embeds: [
         {
           title: `💼 Notifica Operativa: ${agentName}`,
@@ -48,7 +48,7 @@ function sendDiscordNotification(agentName, text, color = 0x58a6ff) {
           color: color,
           timestamp: new Date().toISOString(),
           footer: {
-            text: 'AziendaAI Office • Sala Operativa'
+            text: 'Easy Agent Office • Sala Operativa'
           }
         }
       ]

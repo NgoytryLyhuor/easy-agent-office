@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>AziendaAI Office — Sala Operativa Ufficiale</title>
+    <title>Easy Agent Office — Sala Operativa Ufficiale</title>
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#161b22" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="AziendaAI" />
+    <meta name="apple-mobile-web-app-title" content="Easy Agent Office" />
     <link rel="apple-touch-icon" href="./icons/icon-256.png" />
     <link rel="icon" type="image/png" href="./icons/icon-256.png?v=2" />
     <link rel="stylesheet" crossorigin href="./assets/index-B4KUBY28.css" />
@@ -1037,7 +1037,7 @@
     <!-- TOP BAR ISTITUZIONALE AZIENDALE -->
     <header>
       <div class="brand">
-        <h1>🏢 AziendaAI Office</h1>
+        <h1>🏢 Easy Agent Office</h1>
         <span class="badge" id="topbar-live-badge">SALA OPERATIVA LIVE</span>
       </div>
       <div class="topbar-actions" style="display:flex; align-items:center; gap:8px;">
@@ -1046,13 +1046,13 @@
         <button id="topbar-tunnel-btn" class="topbar-btn" onclick="openTunnelModal()" title="Mobile Preview Tunnel & QR Code (Idea #4)" style="background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">🌐 <span id="label-topbar-tunnel" class="topbar-btn-text">Mobile Preview:</span> <span id="topbar-tunnel-badge" style="background:#30363d; color:#8b949e; font-size:0.68rem; padding:1px 6px; border-radius:10px; font-weight:700;">Offline</span></button>
         <button id="kanban-toggle-btn" class="topbar-btn" onclick="openKanbanModal()" style="background:#21262d; color:#58a6ff; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px;">📋 <span id="label-kanban-btn">Lavagna Task</span> <span id="kanban-count-badge" style="background:#1f6feb; color:#fff; border-radius:99px; padding:1px 6px; font-size:0.68rem;">0</span></button>
         <button id="memory-graph-btn" class="topbar-btn" onclick="openMemoryModal()" title="Memoria & Skill Graph Aziendale (Idea #5)" style="background:#21262d; color:#bc8cff; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px;">🧬 <span id="label-memory-btn">Memoria & Skill</span></button>
-        <button id="living-brain-btn" class="topbar-btn topbar-btn-brain" onclick="openLivingBrainModal()" title="The Living Brain 3D — Neurale AziendaAI" style="background:linear-gradient(135deg, #1f2937, #111827); color:#d2a8ff; border:1px solid #a371f7; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px; box-shadow:0 0 10px rgba(163,113,247,0.25);">🧠 <span id="label-living-brain-btn">Living Brain 3D</span></button>
+        <button id="living-brain-btn" class="topbar-btn topbar-btn-brain" onclick="openLivingBrainModal()" title="The Living Brain 3D — Neurale Easy Agent Office" style="background:linear-gradient(135deg, #1f2937, #111827); color:#d2a8ff; border:1px solid #a371f7; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px; box-shadow:0 0 10px rgba(163,113,247,0.25);">🧠 <span id="label-living-brain-btn">Living Brain 3D</span></button>
         <!-- QUICK PROJECT SWITCHER COMPATTO ACCANTO AL LIVING BRAIN 3D -->
         <div id="quick-project-container" style="position:relative; display:inline-flex; align-items:center;">
           <button id="project-switcher-btn" class="topbar-btn" onclick="toggleQuickProjectDropdown(event)" title="Cambia Progetto Target / Switch Target Workspace" style="background:#21262d; color:#3fb950; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
             <span>📂</span>
             <span id="label-project-btn" class="topbar-btn-text">Progetto:</span>
-            <code id="active-project-name" style="color:#f0f6fc; font-family:Consolas,monospace; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; vertical-align:middle;">AziendaAI</code>
+            <code id="active-project-name" style="color:#f0f6fc; font-family:Consolas,monospace; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; vertical-align:middle;">Easy Agent Office</code>
             <span id="active-project-branch" class="project-branch-badge" style="background:rgba(56,139,253,0.18); color:#58a6ff; border:1px solid rgba(56,139,253,0.4); font-size:0.65rem; padding:1px 6px; border-radius:10px; font-family:Consolas,monospace; font-weight:600; display:inline-flex; align-items:center; gap:3px;">
               <span style="font-size:0.68rem;">🌿</span><span id="active-project-branch-name">main</span>
             </span>
@@ -1333,7 +1333,7 @@
         <div style="padding: 14px 20px; background: #161b22; border-bottom: 1px solid #30363d; display: flex; align-items: center; justify-content: space-between;">
           <div style="display: flex; align-items: center; gap: 10px;">
             <span style="font-size: 1.25rem;">📋</span>
-            <h2 id="kanban-modal-title" style="font-size: 1.05rem; color: #f0f6fc; margin: 0;">Lavagna Kanban Operativa — AziendaAI</h2>
+            <h2 id="kanban-modal-title" style="font-size: 1.05rem; color: #f0f6fc; margin: 0;">Lavagna Kanban Operativa — Easy Agent Office</h2>
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <button id="kanban-clear-btn" onclick="clearCompletedKanbanTasks()" style="background:#21262d; color:#8b949e; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; cursor:pointer;">🧹 Pulisci Completati</button>
@@ -1448,7 +1448,7 @@
         <div style="padding: 14px 20px; background: #161b22; border-bottom: 1px solid #30363d; display: flex; align-items: center; justify-content: space-between;">
           <div style="display: flex; align-items: center; gap: 10px;">
             <span style="font-size: 1.2rem;">📊</span>
-            <h2 id="ceo-report-modal-title" style="font-size: 1rem; color: #f0f6fc; margin: 0;">Report Esecutivo CEO — AziendaAI</h2>
+            <h2 id="ceo-report-modal-title" style="font-size: 1rem; color: #f0f6fc; margin: 0;">Report Esecutivo CEO — Easy Agent Office</h2>
           </div>
           <button onclick="closeCeoReportModal()" style="background:#da3633; color:#fff; border:none; border-radius:6px; padding:4px 10px; font-size:0.78rem; font-weight:700; cursor:pointer;">✕</button>
         </div>
@@ -1650,7 +1650,7 @@
                 <div style="display: flex; align-items: center; gap: 10px;">
                   <span style="font-size: 1.6rem;">🧠</span>
                   <div>
-                    <h3 style="font-size: 0.95rem; color: #f0f6fc; margin: 0; font-weight: 700;">The Living Brain 3D — Neurale AziendaAI</h3>
+                    <h3 style="font-size: 0.95rem; color: #f0f6fc; margin: 0; font-weight: 700;">The Living Brain 3D — Neurale Easy Agent Office</h3>
                     <div style="font-size: 0.72rem; color: #8b949e;">Visualizzazione 3D WebGL della memoria condivisa, dei 4 lobi agenti e delle sinapsi pulsanti</div>
                   </div>
                 </div>
@@ -1754,7 +1754,7 @@
             <span style="font-size: 1.4rem; text-shadow: 0 0 10px #bc8cff;">🧠</span>
             <div>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <h2 id="living-brain-title" style="font-size: 1rem; color: #f0f6fc; margin: 0; font-weight: 800; letter-spacing: 0.5px;">The Living Brain 3D — Neurale AziendaAI</h2>
+                <h2 id="living-brain-title" style="font-size: 1rem; color: #f0f6fc; margin: 0; font-weight: 800; letter-spacing: 0.5px;">The Living Brain 3D — Neurale Easy Agent Office</h2>
                 <span id="brain-webgl-badge" style="background:#23863622; color:#3fb950; border:1px solid #23863666; border-radius:12px; padding:2px 8px; font-size:0.68rem; font-weight:700;">🟢 WebGL 3D ACCELERATO</span>
               </div>
               <div id="living-brain-subtitle" style="font-size: 0.72rem; color: #8b949e; margin-top: 2px;">Grafo Neurale Condiviso • 4 Lobi Agenti • Link Sinaptici Pulsanti</div>
@@ -1847,7 +1847,7 @@
       // =========================================================================
       // SISTEMA AUTOMATICO BILINGUE IT / EN (Per te in Italiano, per utenti esteri in Inglese)
       // =========================================================================
-      let appLang = localStorage.getItem('aziendaai_lang') || ((navigator.language || 'it').toLowerCase().startsWith('it') ? 'it' : 'en');
+      let appLang = localStorage.getItem('easy-agent-office_lang') || ((navigator.language || 'it').toLowerCase().startsWith('it') ? 'it' : 'en');
       let currentTunnelState = { active: false, status: 'inactive' };
       const I18N = {
         it: {
@@ -1869,7 +1869,7 @@
           chipLoungeOn: '💻 Torna alle Scrivanie',
           chipStandup: '📢 Convoca Riunione',
           kanbanBtn: 'Lavagna Task',
-          kanbanTitle: 'Lavagna Kanban Operativa — AziendaAI',
+          kanbanTitle: 'Lavagna Kanban Operativa — Easy Agent Office',
           kanbanClear: '🧹 Pulisci Completati',
           kanbanColQueued: '⏳ In Coda / Riposo',
           kanbanColActive: '⚡ In Corso / Assegnati',
@@ -1880,7 +1880,7 @@
           projModalDesc: 'Indica il percorso assoluto della cartella su cui vuoi far lavorare Alberto (CEO), Luigi, Gabri e Carlo (puoi cambiarlo anche da Discord con <code style="color:#58a6ff;">!project &lt;percorso&gt;</code>).',
           projCancelBtn: 'Annulla',
           projSaveBtn: '✅ Imposta Progetto',
-          ceoModalTitle: 'Report Esecutivo CEO — AziendaAI',
+          ceoModalTitle: 'Report Esecutivo CEO — Easy Agent Office',
           ceoCopyBtn: '📋 Copia Markdown',
           ceoDiscordBtn: '📢 Pubblica su Discord',
           chipReport: '📊 Report CEO',
@@ -1918,7 +1918,7 @@
           memoryCloseBtn: 'Chiudi',
           chipLivingBrain: '🧠 Living Brain 3D',
           livingBrainBtn: 'Living Brain 3D',
-          livingBrainTitle: 'The Living Brain 3D — Neurale AziendaAI',
+          livingBrainTitle: 'The Living Brain 3D — Neurale Easy Agent Office',
           livingBrainSubtitle: 'Grafo Neurale Condiviso • 4 Lobi Agenti • Link Sinaptici Pulsanti',
           tabLivingBrain: '🧠 The Living Brain 3D',
           dailyDigestLabel: '🌙 Daily Digest Notturno',
@@ -1965,7 +1965,7 @@
           chipLoungeOn: '💻 Back to Desks',
           chipStandup: '📢 Call Standup Meeting',
           kanbanBtn: 'Task Board',
-          kanbanTitle: 'Live Kanban Task Board — AziendaAI',
+          kanbanTitle: 'Live Kanban Task Board — Easy Agent Office',
           kanbanClear: '🧹 Clear Completed',
           kanbanColQueued: '⏳ Queued / Rest',
           kanbanColActive: '⚡ In Progress / Dispatched',
@@ -1976,7 +1976,7 @@
           projModalDesc: 'Specify the absolute folder path where Alberto (CEO), Luigi, Gabri, and Carlo should work (you can also change it from Discord using <code style="color:#58a6ff;">!project &lt;path&gt;</code>).',
           projCancelBtn: 'Cancel',
           projSaveBtn: '✅ Set Workspace',
-          ceoModalTitle: 'CEO Executive Report — AziendaAI',
+          ceoModalTitle: 'CEO Executive Report — Easy Agent Office',
           ceoCopyBtn: '📋 Copy Markdown',
           ceoDiscordBtn: '📢 Post to Discord',
           chipReport: '📊 CEO Report',
@@ -2014,7 +2014,7 @@
           memoryCloseBtn: 'Close',
           chipLivingBrain: '🧠 Living Brain 3D',
           livingBrainBtn: 'Living Brain 3D',
-          livingBrainTitle: 'The Living Brain 3D — AziendaAI Neural',
+          livingBrainTitle: 'The Living Brain 3D — Easy Agent Office Neural',
           livingBrainSubtitle: 'Shared Neural Graph • 4 Agent Lobes • Pulsing Synaptic Links',
           tabLivingBrain: '🧠 The Living Brain 3D',
           dailyDigestLabel: '🌙 Nightly Daily Digest',
@@ -2126,7 +2126,7 @@
 
       window.toggleAppLang = function() {
         appLang = appLang === 'it' ? 'en' : 'it';
-        localStorage.setItem('aziendaai_lang', appLang);
+        localStorage.setItem('easy-agent-office_lang', appLang);
         applyLanguage();
       };
 
@@ -3761,7 +3761,7 @@
         if (Array.isArray(data.projects)) registeredProjects = data.projects;
         else if (Array.isArray(data.list)) registeredProjects = data.list;
 
-        const projName = data.projectName || (data.projectPath ? data.projectPath.split(/[\\/]/).pop() : 'AziendaAI');
+        const projName = data.projectName || (data.projectPath ? data.projectPath.split(/[\\/]/).pop() : 'Easy Agent Office');
         const branchName = data.gitBranch || data.branch || 'main';
 
         const nameEl = document.getElementById('active-project-name');
@@ -3770,7 +3770,7 @@
         const branchEl = document.getElementById('active-project-branch-name');
         if (branchEl) branchEl.textContent = branchName;
 
-        document.title = `🏢 ${projName} — AziendaAI Office`;
+        document.title = `🏢 ${projName} — Easy Agent Office`;
 
         const btnEl = document.getElementById('project-switcher-btn');
         if (btnEl) btnEl.title = `Progetto Attivo: ${data.projectPath || projName} (🌿 ${branchName})`;
@@ -4029,7 +4029,7 @@
       // =========================================================================
       // INNOVAZIONE #5: MOTORE AUDIO SINTETIZZATO RETRO 8-BIT (WEBAUDIO API)
       // =========================================================================
-      let retroSoundEnabled = localStorage.getItem('aziendaai_sound') !== 'off';
+      let retroSoundEnabled = localStorage.getItem('easy-agent-office_sound') !== 'off';
       let audioCtx = null;
 
       function updateSoundButtonUI() {
@@ -4041,7 +4041,7 @@
 
       window.toggleRetroSound = function() {
         retroSoundEnabled = !retroSoundEnabled;
-        localStorage.setItem('aziendaai_sound', retroSoundEnabled ? 'on' : 'off');
+        localStorage.setItem('easy-agent-office_sound', retroSoundEnabled ? 'on' : 'off');
         updateSoundButtonUI();
         if (retroSoundEnabled) playRetroSound('complete');
       };
@@ -4672,7 +4672,7 @@
                   <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
                     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                       <span style="background:#23863626; color:#3fb950; border:1px solid #23863666; border-radius:4px; padding:2px 6px; font-size:0.68rem; font-weight:700;">REGOLA: ${escapeHtml(r.key || 'standard')}</span>
-                      <span style="background:#21262d; color:#8b949e; border-radius:10px; padding:1px 6px; font-size:0.66rem; font-weight:600;">Fonte: ${escapeHtml(r.source || 'AziendaAI')}</span>
+                      <span style="background:#21262d; color:#8b949e; border-radius:10px; padding:1px 6px; font-size:0.66rem; font-weight:600;">Fonte: ${escapeHtml(r.source || 'Easy Agent Office')}</span>
                       ${dateStr ? `<span style="font-size:0.66rem; color:#6e7681;">${escapeHtml(dateStr)}</span>` : ''}
                     </div>
                     <div style="font-size:0.8rem; color:#e6edf3; line-height:1.4; margin-top:2px;">

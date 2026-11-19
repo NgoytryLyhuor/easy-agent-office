@@ -1,5 +1,5 @@
-// Service Worker per AziendaAI PWA
-const CACHE_NAME = 'aziendaai-pwa-v3';
+// Service Worker per Easy Agent Office PWA
+const CACHE_NAME = 'easy-agent-office-pwa-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

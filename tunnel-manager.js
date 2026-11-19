@@ -120,7 +120,7 @@ function proxyHttpRequest(req, res, targetPort = 3000) {
 
   proxyReq.on('error', (err) => {
     res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ ok: false, error: '502 Bad Gateway: Backend AziendaAI su porta 3000 non raggiungibile.' }));
+    res.end(JSON.stringify({ ok: false, error: '502 Bad Gateway: Backend Easy Agent Office su porta 3000 non raggiungibile.' }));
   });
 
   req.pipe(proxyReq);
@@ -189,7 +189,7 @@ function createPreviewServer(dirPath = routing.getTargetProject()) {
         if (fs.existsSync(publicFallback) && !fs.statSync(publicFallback).isDirectory()) {
           return serveFile(publicFallback, res);
         }
-        // Fallback 2: cerca dentro la root public/ di AziendaAI
+        // Fallback 2: cerca dentro la root public/ di Easy Agent Office
         const rootPublicFallback = path.join(__dirname, 'public', '.' + reqPath);
         if (fs.existsSync(rootPublicFallback) && !fs.statSync(rootPublicFallback).isDirectory()) {
           return serveFile(rootPublicFallback, res);

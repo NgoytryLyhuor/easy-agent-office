@@ -1,6 +1,6 @@
-# AGENTS.md — AziendaAI Core Team Structure
+# AGENTS.md — Easy Agent Office Core Team Structure
 
-Welcome to **AziendaAI**. This project operates with a persistent hierarchy of 4 specialized AI agents (configurable via [`team.config.json`](../team.config.json)), each backed by an automatic **Gemini ⇄ Claude Alterego** failover pair.
+Welcome to **Easy Agent Office**. This project operates with a persistent hierarchy of 4 specialized AI agents (configurable via [`team.config.json`](../team.config.json)), each backed by an automatic **Gemini ⇄ Claude Alterego** failover pair.
 
 > **Language Rule / Regola Lingua:** Always reply in the same language used by the user (Default for the Supreme Entity: **Italian** / Rispondi sempre in **Italiano** all'Entità Suprema).
 

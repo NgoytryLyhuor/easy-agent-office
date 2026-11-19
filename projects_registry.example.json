@@ -1,7 +1,7 @@
 [
   {
-    "id": "aziendaai",
-    "name": "AziendaAI",
+    "id": "easy-agent-office",
+    "name": "Easy Agent Office",
     "path": ".",
     "branch": "main",
     "isGit": true,

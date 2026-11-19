@@ -290,7 +290,7 @@ function dispatchRealTask(agent, rawInput) {
     // Invia direttamente tramite l'eseguibile nativo language_server agentapi send-message
     const serverExe = resolveLanguageServer();
     const activeProj = routing.getTargetProject();
-    const msgContent = `[Progetto Target Attivo: ${activeProj}] Messaggio operativo dalla Dashboard Web AziendaAI: ${text}`;
+    const msgContent = `[Progetto Target Attivo: ${activeProj}] Messaggio operativo dalla Dashboard Web Easy Agent Office: ${text}`;
 
     // Risoluzione dinamica delle variabili d'ambiente necessarie a language_server.exe
     // quando il server viene lanciato come demone indipendente o script di background
@@ -648,13 +648,13 @@ function loadLayout() {
       return JSON.parse(fs.readFileSync(LAYOUT_PATH, 'utf8'));
     }
   } catch (err) {
-    console.error('[AziendaAI] Errore lettura layout.json:', err.message);
+    console.error('[Easy Agent Office] Errore lettura layout.json:', err.message);
   }
   return null;
 }
 
 // Cache asset in memoria all'avvio
-console.log('🔄 [AziendaAI] Caricamento e rasterizzazione asset nativi Pixel Agents...');
+console.log('🔄 [Easy Agent Office] Caricamento e rasterizzazione asset nativi Pixel Agents...');
 const ASSET_CACHE = {
   floors: loadFloorTiles(),
   walls: loadWallTiles(),
@@ -663,9 +663,9 @@ const ASSET_CACHE = {
   furniture: loadFurnitureAssets(),
   layout: loadLayout()
 };
-console.log(`✅ [AziendaAI] Asset pronti: ${ASSET_CACHE.characters.length} personaggi, ${ASSET_CACHE.floors.length} pavimenti, ${ASSET_CACHE.walls.length} muri, ${ASSET_CACHE.furniture.catalog.length} mobili.`);
+console.log(`✅ [Easy Agent Office] Asset pronti: ${ASSET_CACHE.characters.length} personaggi, ${ASSET_CACHE.floors.length} pavimenti, ${ASSET_CACHE.walls.length} muri, ${ASSET_CACHE.furniture.catalog.length} mobili.`);
 
-// I membri permanenti del Team AziendaAI (personalizzabili da team.config.json)
+// I membri permanenti del Team Easy Agent Office (personalizzabili da team.config.json)
 const DEFAULT_TEAM = [
   {
     id: 10,
@@ -678,7 +678,7 @@ const DEFAULT_TEAM = [
     hueShift: 0,
     seatId: 'f-1773356768339-eo6u',
     isTeamLead: true,
-    directoryName: 'AziendaAI',
+    directoryName: 'Easy Agent Office',
     status: 'online',
     logs: [
       `[${new Date().toLocaleTimeString()}] Alberto (CEO) ha assunto il comando operativo.`,
@@ -696,7 +696,7 @@ const DEFAULT_TEAM = [
     hueShift: 0,
     seatId: 'f-1773354881902-9m50',
     isTeamLead: false,
-    directoryName: 'AziendaAI',
+    directoryName: 'Easy Agent Office',
     status: 'online',
     logs: [
       `[${new Date().toLocaleTimeString()}] Luigi ha sincronizzato il server HTTP/WebSocket.`,
@@ -714,7 +714,7 @@ const DEFAULT_TEAM = [
     hueShift: 0,
     seatId: 'f-1773354879805-px9b',
     isTeamLead: false,
-    directoryName: 'AziendaAI',
+    directoryName: 'Easy Agent Office',
     status: 'online',
     logs: [
       `[${new Date().toLocaleTimeString()}] Gabri ha renderizzato la sala operativa pixel art.`,
@@ -732,7 +732,7 @@ const DEFAULT_TEAM = [
     hueShift: 0,
     seatId: 'f-1773354880309-yphd',
     isTeamLead: false,
-    directoryName: 'AziendaAI',
+    directoryName: 'Easy Agent Office',
     status: 'online',
     logs: [
       `[${new Date().toLocaleTimeString()}] Carlo operativo con verifica rigorosa canali RGBA.`,
@@ -760,7 +760,7 @@ try {
           hueShift: m.hueShift !== undefined ? Number(m.hueShift) : def.hueShift,
           seatId: m.seatId || def.seatId,
           isTeamLead: m.isTeamLead !== undefined ? Boolean(m.isTeamLead) : def.isTeamLead,
-          directoryName: 'AziendaAI',
+          directoryName: 'Easy Agent Office',
           status: 'online',
           logs: def.logs || [`[${new Date().toLocaleTimeString()}] ${m.name} operativo.`]
         };
@@ -768,7 +768,7 @@ try {
     }
   }
 } catch (err) {
-  console.warn('[AziendaAI] Errore lettura team.config.json, uso team default:', err.message);
+  console.warn('[Easy Agent Office] Errore lettura team.config.json, uso team default:', err.message);
 }
 
 // Broadcast WebSocket con gestione sicura degli errori
@@ -878,7 +878,7 @@ function sendOfficeInitProtocol(ws) {
     ws.send(JSON.stringify({
       type: 'agentTeamInfo',
       id: a.id,
-      teamName: 'AziendaAI',
+      teamName: 'Easy Agent Office',
       agentName: a.agentName,
       isTeamLead: a.isTeamLead
     }));
@@ -1660,7 +1660,7 @@ app.post('/api/ceo-report', (req, res) => {
     const nowStr = new Date().toLocaleString('it-IT');
 
     const reportMd = [
-      `# 📊 Report Esecutivo CEO — AziendaAI`,
+      `# 📊 Report Esecutivo CEO — Easy Agent Office`,
       `**Data & Ora:** ${nowStr}`,
       `**Progetto Target Attivo:** \`${projPath}\``,
       `**Modalità Operativa:** \`${mode.toUpperCase()}\``,
@@ -2031,7 +2031,7 @@ function preloadAgentLogs() {
         targetAgent.logs = recentLogs.slice(-25);
       }
     } catch (err) {
-      console.warn(`[AziendaAI] Errore caricamento transcript per ${agentId}:`, err.message);
+      console.warn(`[Easy Agent Office] Errore caricamento transcript per ${agentId}:`, err.message);
     }
   }
 }

@@ -1,11 +1,18 @@
 {
-  "name": "azienda-ai-office",
+  "name": "easy-agent-office",
   "version": "1.1.0",
-  "description": "Sala Operativa Autonoma Ufficiale di AziendaAI con simulazione Pixel Art e Console Operativa Agenti",
+  "description": "A simple 2D pixel office that shows your Google Antigravity agents working, walking and holding meetings.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "setup": "node setup-agents.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NgoytryLyhuor/easy-agent-office.git"
+  },
+  "author": "NgoytryLyhuor",
+  "license": "MIT",
   "dependencies": {
     "discord.js": "^14.28.1",
     "express": "^4.22.3",

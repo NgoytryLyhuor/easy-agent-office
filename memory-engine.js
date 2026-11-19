@@ -374,7 +374,7 @@ function loadMemory() {
         id: 'rule-server-headless-start',
         category: 'rules',
         key: 'server-headless-start',
-        value: 'Il server AziendaAI va avviato esclusivamente tramite start.vbs --headless via WMI Win32_Process.',
+        value: 'Il server Easy Agent Office va avviato esclusivamente tramite start.vbs --headless via WMI Win32_Process.',
         source: 'Alberto (CEO)',
         timestamp: now
       },
@@ -1118,7 +1118,7 @@ function generateDigest({ force = false, source = 'system' } = {}) {
   const feedback = memoryState.feedback || [];
 
   const routingMod = require('./routing');
-  const rawProj = typeof routingMod.getTargetProject === 'function' ? routingMod.getTargetProject() : 'AziendaAI';
+  const rawProj = typeof routingMod.getTargetProject === 'function' ? routingMod.getTargetProject() : 'Easy Agent Office';
   const cleanProj = sanitizePublicText(path.basename(rawProj));
 
   const reportItem = {

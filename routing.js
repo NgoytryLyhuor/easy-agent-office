@@ -249,7 +249,7 @@ function loadProjectsRegistry() {
     rawList = [
       {
         id: 'azienda-ai',
-        name: 'AziendaAI',
+        name: 'Easy Agent Office',
         path: rootPath,
         branch: git.branch,
         isGit: git.isGit,
