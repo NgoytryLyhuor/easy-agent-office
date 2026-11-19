@@ -19,11 +19,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
       );
     }).then(() => self.clients.claim())
   );
@@ -34,7 +30,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Bypassa websocket e chiamate API / monitoraggio
-  if (url.pathname.startsWith('/api/') || event.request.method !== 'GET') {
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws') || event.request.method !== 'GET') {
     return;
   }
 

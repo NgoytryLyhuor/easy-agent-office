@@ -173,23 +173,6 @@
         transition: width 0.4s ease, background 0.4s ease;
       }
 
-      /* DISCORD WEBHOOK STATUS BADGE */
-      .discord-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 0.74rem;
-        padding: 2px 8px;
-        border-radius: 4px;
-        background: #5865f21a;
-        color: #5865f2;
-        border: 1px solid #5865f24d;
-        cursor: pointer;
-      }
-      .discord-badge:hover {
-        background: #5865f233;
-      }
-
       /* DRAWER / CONSOLE LATERALE AGENTE */
       #agent-drawer {
         width: 480px;
@@ -2157,7 +2140,6 @@
       const drawerName = document.getElementById('drawer-agent-name');
       const drawerRole = document.getElementById('drawer-agent-role');
       const drawerAvatar = document.getElementById('drawer-agent-avatar');
-      const drawerStatusBadge = document.getElementById('drawer-status-badge');
       const drawerLiveStatus = document.getElementById('drawer-agent-status');
       const drawerStatusText = document.getElementById('drawer-status-text');
       const tokenUsageText = document.getElementById('token-usage-text');
@@ -3491,8 +3473,6 @@
           ws.send(JSON.stringify({ type: 'toggleLoungeBreak', agentId: selectedId, active: !currentlyOnSofa }));
         }
       };
-
-      const IDLE_LOUNGE_TIMEOUT_MS = 4000; // Delay fluido di ~4s di inattività dopo il completamento prima di andare sul divano
 
       // Routine di sincronizzazione automatica Idle = Divanetti Lounge / Working = Scrivania PC
       function syncOfficeLoungeAndDesks() {
@@ -5435,22 +5415,6 @@
           if (btn) btn.disabled = false;
         }
       };
-
-      // Gestione ridondante e ultra-robusta dei click per Living Brain 3D e Memoria
-      document.addEventListener('click', (e) => {
-        const brainTrigger = e.target.closest('#living-brain-btn, #chip-living-brain');
-        if (brainTrigger) {
-          e.preventDefault();
-          openLivingBrainModal();
-          return;
-        }
-        const memTrigger = e.target.closest('#memory-graph-btn, #chip-memory');
-        if (memTrigger) {
-          e.preventDefault();
-          openMemoryModal();
-          return;
-        }
-      });
     </script>
 
     <!-- JS ENGINE ORIGINALE PIXEL AGENTS -->
