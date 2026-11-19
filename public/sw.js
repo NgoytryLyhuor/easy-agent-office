@@ -1,5 +1,5 @@
 // Service Worker per Easy Agent Office PWA
-const CACHE_NAME = 'easy-agent-office-pwa-v3';
+const CACHE_NAME = 'easy-agent-office-pwa-v4';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

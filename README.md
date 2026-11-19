@@ -35,15 +35,22 @@ To start it again later, just double-click `START.bat` again.
 | 🎨 Gabri | Frontend engineer |
 | 🛡️ Carlo | QA & security reviewer |
 
-### Easy Mode (on by default)
+### The new simple homepage
 
-Only three big buttons are shown:
+The homepage is deliberately simple. On the left is the living pixel office.
+On the right you get only four things:
 
-- 🚶 **Test Delegation** — watch Alberto walk to Luigi
-- ☕ **Sofa Break** — everyone goes to the lounge
-- 📢 **Call Standup Meeting** — everyone gathers at the CEO's desk
+1. **Your AI workers** — click a name to choose who gets the task.
+2. **Give a task** — type a task and press **Send task**.
+3. **Quick actions** — fun animations: 🚶 Watch delegation, 📢 Call a meeting, ☕ Coffee break.
+4. **What's happening** — live activity copied from Antigravity.
 
-Click the **⚙️ Show All** button in the top bar to reveal every advanced feature.
+Use the **English / ខ្មែរ** switch in the top-right to change language instantly.
+A short welcome guide appears on your first visit, and the ❓ Help button explains
+every word in plain language.
+
+Need every advanced setting? Open **Full version** in the top-right — the original
+dashboard is kept there at `/full.html`.
 
 ---
 

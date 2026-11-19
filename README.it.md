@@ -28,15 +28,22 @@ crea i 4 agenti se non esistono, avvia il server e apre **http://localhost:3000*
 | 🎨 Gabri | Frontend developer |
 | 🛡️ Carlo | QA e sicurezza |
 
-### Modalità Easy (attiva di default)
+### La nuova homepage semplice
 
-Solo tre pulsanti grandi:
+La homepage è volutamente semplice. A sinistra c'è l'ufficio pixel animato.
+A destra trovi solo quattro cose:
 
-- 🚶 **Test Delegation** — Alberto cammina da Luigi
-- ☕ **Sofa Break** — tutti vanno in sala relax
-- 📢 **Call Standup Meeting** — tutti si riuniscono alla scrivania del CEO
+1. **I tuoi AI worker** — clicca un nome per scegliere chi riceve il compito.
+2. **Dai un compito** — scrivi il compito e premi **Invia compito**.
+3. **Azioni rapide** — animazioni divertenti: 🚶 Delegazione, 📢 Riunione, ☕ Pausa caffè.
+4. **Cosa sta succedendo** — attività reale copiata da Antigravity.
 
-Il pulsante **⚙️ Show All** nella barra in alto mostra tutte le funzioni avanzate.
+Usa l'interruttore **English / ខ្មែរ** in alto a destra per cambiare lingua subito.
+Al primo accesso appare una breve guida, e il pulsante ❓ Help spiega ogni parola
+in linguaggio semplice.
+
+Ti servono tutte le impostazioni? Apri **Full version** in alto a destra:
+la dashboard originale è disponibile su `/full.html`.
 
 ---
 
