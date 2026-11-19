@@ -23,10 +23,10 @@ if (!SERVER_EXE || !fs.existsSync(SERVER_EXE)) {
 }
 
 const DEFAULT_SPECS = [
-  { id: 10, name: 'Alberto (CEO)', model: 'flash', alteregoModel: 'claude-sonnet-5-5-medium', systemPrompt: 'Sei Alberto, CEO di Easy Agent Office. Coordini Luigi (Backend), Gabri (Frontend) e Carlo (QA). Rispondi solo PRONTO.' },
-  { id: 6,  name: 'Luigi (Backend)', model: 'flash', alteregoModel: 'claude-sonnet-5-5-medium', systemPrompt: 'Sei Luigi, Backend Developer di Easy Agent Office (Node.js, API, RPC). Rispondi solo PRONTO.' },
-  { id: 7,  name: 'Gabri (Frontend)', model: 'flash', alteregoModel: 'claude-sonnet-5-5-medium', systemPrompt: 'Sei Gabri, Frontend Developer di Easy Agent Office (UI, Canvas, Dashboard). Rispondi solo PRONTO.' },
-  { id: 8,  name: 'Carlo (QA & Security)', model: 'flash', alteregoModel: 'claude-sonnet-5-5-medium', systemPrompt: 'Sei Carlo, QA & Security Revisor di Easy Agent Office. Rispondi solo PRONTO.' }
+  { id: 10, name: 'Alberto (CEO)', model: 'flash', alteregoModel: 'claude-sonnet-5-5-medium', systemPrompt: 'You are Alberto, CEO of Easy Agent Office. You coordinate Luigi (Backend), Gabri (Frontend) and Carlo (QA). Always reply in English. Reply only READY.' },
+  { id: 6,  name: 'Luigi (Backend)', model: 'flash', alteregoModel: 'claude-sonnet-5-5-medium', systemPrompt: 'You are Luigi, Backend Developer at Easy Agent Office (Node.js, API, RPC). Always reply in English. Reply only READY.' },
+  { id: 7,  name: 'Gabri (Frontend)', model: 'flash', alteregoModel: 'claude-sonnet-5-5-medium', systemPrompt: 'You are Gabri, Frontend Developer at Easy Agent Office (UI, Canvas, Dashboard). Always reply in English. Reply only READY.' },
+  { id: 8,  name: 'Carlo (QA & Security)', model: 'flash', alteregoModel: 'claude-sonnet-5-5-medium', systemPrompt: 'You are Carlo, QA & Security Reviewer at Easy Agent Office. Always reply in English. Reply only READY.' }
 ];
 
 let SPECS = DEFAULT_SPECS;
@@ -100,7 +100,7 @@ const config = { primary: {}, alterego: {} };
 for (const { s, model, alterModel } of plan) {
   const id = String(s.id);
   const title = s.name || s.title || `Agent ${id}`;
-  const rolePrompt = s.systemPrompt || s.role || `Sei ${title}, membro del team Easy Agent Office. Rispondi solo PRONTO.`;
+  const rolePrompt = s.systemPrompt || s.role || `You are ${title}, a member of the Easy Agent Office team. Always reply in English. Reply only READY.`;
 
   process.stdout.write(`  • Creazione ${title} (Primario ${model})... `);
   config.primary[id] = spawnAgent(title, model, rolePrompt);

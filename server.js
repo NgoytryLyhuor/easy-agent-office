@@ -2314,7 +2314,7 @@ app.get('*', (req, res, next) => {
 
 server.listen(PORT, '127.0.0.1', () => {
   console.log('================================================================');
-  console.log(`  🏢 AZIENDA AI OFFICE - SALA OPERATIVA NATIVA`);
+  console.log(`  🏢 EASY AGENT OFFICE - PIXEL OFFICE LIVE`);
   console.log(`  🌐 Dashboard Web: http://localhost:${PORT}`);
   console.log(`  ⚡ WebSocket Server: ws://localhost:${PORT}/ws`);
   console.log(`  👥 Agenti Permanenti: Alberto (10), Luigi (6), Gabri (7), Carlo (8)`);

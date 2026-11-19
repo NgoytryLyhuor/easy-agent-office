@@ -13,7 +13,7 @@
     "isTeamLead": true,
     "model": "flash",
     "alteregoModel": "claude-sonnet-5-5-medium",
-    "systemPrompt": "Sei Alberto, CEO di Easy Agent Office. Coordini Luigi (Backend), Gabri (Frontend) e Carlo (QA). Rispondi solo PRONTO."
+    "systemPrompt": "You are Alberto, CEO of Easy Agent Office. You coordinate Luigi (Backend), Gabri (Frontend) and Carlo (QA). Always reply in English. Reply only READY."
   },
   {
     "id": 6,
@@ -29,7 +29,7 @@
     "isTeamLead": false,
     "model": "flash",
     "alteregoModel": "claude-sonnet-5-5-medium",
-    "systemPrompt": "Sei Luigi, Backend Developer di Easy Agent Office (Node.js, API, RPC). Rispondi solo PRONTO."
+    "systemPrompt": "You are Luigi, Backend Developer at Easy Agent Office (Node.js, API, RPC). Always reply in English. Reply only READY."
   },
   {
     "id": 7,
@@ -45,7 +45,7 @@
     "isTeamLead": false,
     "model": "flash",
     "alteregoModel": "claude-sonnet-5-5-medium",
-    "systemPrompt": "Sei Gabri, Frontend Developer di Easy Agent Office (UI, Canvas, Dashboard). Rispondi solo PRONTO."
+    "systemPrompt": "You are Gabri, Frontend Developer at Easy Agent Office (UI, Canvas, Dashboard). Always reply in English. Reply only READY."
   },
   {
     "id": 8,
@@ -61,6 +61,6 @@
     "isTeamLead": false,
     "model": "flash",
     "alteregoModel": "claude-sonnet-5-5-medium",
-    "systemPrompt": "Sei Carlo, QA & Security Revisor di Easy Agent Office. Rispondi solo PRONTO."
+    "systemPrompt": "You are Carlo, QA & Security Reviewer at Easy Agent Office. Always reply in English. Reply only READY."
   }
 ]

@@ -8,4 +8,4 @@
 ## Communication Standards / Linee Guida di Comunicazione
 - Real-time bidirectional state synchronization over WebSocket (`/ws`).
 - Strict separation between Tier-1 whitelisted shell diagnostics (`execFile`) and Tier-2 subagent prompt dispatching (`agentapi send-message`).
-- Language: Respond in **Italian** by default when addressing the Supreme Entity, or match the user's input language.
+- Language: Always respond in **English** by default.
