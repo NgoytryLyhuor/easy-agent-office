@@ -994,6 +994,43 @@
           font-size: 1.15rem !important;
         }
       }
+
+      /* ===== EASY MODE: hide advanced controls, keep the fun part ===== */
+      #easy-mode-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: #238636; color: #fff; border: 1px solid #3fb950;
+        border-radius: 6px; padding: 5px 10px; font-size: 0.75rem;
+        font-weight: 700; cursor: pointer; white-space: nowrap;
+      }
+      body.easy-mode #topbar-tunnel-btn,
+      body.easy-mode #kanban-toggle-btn,
+      body.easy-mode #memory-graph-btn,
+      body.easy-mode #living-brain-btn,
+      body.easy-mode #quick-project-container,
+      body.easy-mode #topbar-tte-btn,
+      body.easy-mode #sound-toggle-btn,
+      body.easy-mode #lang-toggle-btn,
+      body.easy-mode #chip-check,
+      body.easy-mode #chip-git,
+      body.easy-mode #chip-audit,
+      body.easy-mode #chip-perm,
+      body.easy-mode #chip-report,
+      body.easy-mode #chip-git-push,
+      body.easy-mode #chip-war-room,
+      body.easy-mode #chip-memory,
+      body.easy-mode #chip-living-brain,
+      body.easy-mode #drawer-token-monitor,
+      body.easy-mode #drawer-tunnel-panel,
+      body.easy-mode #drawer-permission-box {
+        display: none !important;
+      }
+      body.easy-mode .quick-actions { justify-content: center; }
+      body.easy-mode .quick-chip { font-size: 0.85rem; padding: 8px 14px; }
+      body.easy-mode .quick-actions::before {
+        content: "TRY THIS: click the blue button to watch the agents walk";
+        display: block; width: 100%; text-align: center;
+        color: #58a6ff; font-size: 0.78rem; font-weight: 700; margin-bottom: 2px;
+      }
     </style>
   </head>
   <body>
@@ -1005,6 +1042,7 @@
       </div>
       <div class="topbar-actions" style="display:flex; align-items:center; gap:8px;">
         <div class="team-bar" id="team-pills"></div>
+        <button id="easy-mode-btn" onclick="toggleEasyMode()" title="Switch between Easy Mode and all features">🟢 Easy Mode</button>
         <button id="topbar-tunnel-btn" class="topbar-btn" onclick="openTunnelModal()" title="Mobile Preview Tunnel & QR Code (Idea #4)" style="background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">🌐 <span id="label-topbar-tunnel" class="topbar-btn-text">Mobile Preview:</span> <span id="topbar-tunnel-badge" style="background:#30363d; color:#8b949e; font-size:0.68rem; padding:1px 6px; border-radius:10px; font-weight:700;">Offline</span></button>
         <button id="kanban-toggle-btn" class="topbar-btn" onclick="openKanbanModal()" style="background:#21262d; color:#58a6ff; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px;">📋 <span id="label-kanban-btn">Lavagna Task</span> <span id="kanban-count-badge" style="background:#1f6feb; color:#fff; border-radius:99px; padding:1px 6px; font-size:0.68rem;">0</span></button>
         <button id="memory-graph-btn" class="topbar-btn" onclick="openMemoryModal()" title="Memoria & Skill Graph Aziendale (Idea #5)" style="background:#21262d; color:#bc8cff; border:1px solid #30363d; border-radius:6px; padding:5px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px;">🧬 <span id="label-memory-btn">Memoria & Skill</span></button>
@@ -5419,5 +5457,25 @@
 
     <!-- JS ENGINE ORIGINALE PIXEL AGENTS -->
     <script type="module" crossorigin src="./assets/index-N6HawqUS.js"></script>
+
+    <!-- EASY MODE: simple on/off switch, remembered in this browser -->
+    <script>
+      function toggleEasyMode() {
+        var on = document.body.classList.toggle('easy-mode');
+        try { localStorage.setItem('easyMode', on ? '1' : '0'); } catch (e) {}
+        updateEasyModeButton(on);
+      }
+      function updateEasyModeButton(on) {
+        var btn = document.getElementById('easy-mode-btn');
+        if (btn) btn.textContent = on ? '⚙️ Show All' : '🟢 Easy Mode';
+      }
+      (function () {
+        var saved = null;
+        try { saved = localStorage.getItem('easyMode'); } catch (e) {}
+        var on = saved === null ? true : saved === '1';
+        if (on) document.body.classList.add('easy-mode');
+        updateEasyModeButton(on);
+      })();
+    </script>
   </body>
 </html>
