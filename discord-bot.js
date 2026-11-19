@@ -1,7 +1,6 @@
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
 const http = require('http');
 const https = require('https');
-const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');

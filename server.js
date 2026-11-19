@@ -34,16 +34,16 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const os = require('os');
-const { execFile, exec } = require('child_process');
+const { execFile } = require('child_process');
 const { PNG } = require('pngjs');
-const { setDiscordWebhook, sendDiscordNotification, getDiscordConfig } = require('./discord-bridge');
+const { setDiscordWebhook, sendDiscordNotification } = require('./discord-bridge');
 const routing = require('./routing');
 const burnoutTracker = require('./burnout-tracker');
 const warRoom = require('./war-room');
 const tunnelManager = require('./tunnel-manager');
 const memoryEngine = require('./memory-engine');
 const { resolveLanguageServer } = require('./antigravity-path');
-const { initDiscordBot, broadcastToDiscord, sendDiscordPermissionPrompt, sendFinalAgentResponse, updateDiscordUsageMonitor, sendDiscordAnnouncement, sendDiscordImage, transcribeAudioWithGemini, checkPredictiveBurnoutAlert } = require('./discord-bot');
+const { initDiscordBot, sendDiscordPermissionPrompt, sendFinalAgentResponse, updateDiscordUsageMonitor, sendDiscordAnnouncement, sendDiscordImage, transcribeAudioWithGemini, checkPredictiveBurnoutAlert } = require('./discord-bot');
 
 const app = express();
 const server = http.createServer(app);
@@ -313,7 +313,7 @@ function dispatchRealTask(agent, rawInput) {
         taskEntry.exitCode = exitCode;
         taskEntry.output = success 
           ? `Task recapitato al subagent (${agent.name}). Elaborazione in corso su Antigravity...`
-          : `Errore inoltro: ${apiErr ? apiErr.message : 'timeout'}`;
+          : `Errore inoltro: ${apiOut || (apiErr ? apiErr.message : 'timeout')}`;
         saveTaskQueue(tasks);
 
         const logEnd = `[${finishTime.toLocaleTimeString()}] ${success ? '✔' : '✖'} ${taskEntry.output}`;

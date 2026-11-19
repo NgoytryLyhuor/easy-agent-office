@@ -1,7 +1,5 @@
 // Modulo Burnout Tracker & Predictive Quota Engine (Innovazione #3)
 // Calcolo matematico predittivo del burn-rate orario, Time-To-Exhaustion (TTE) e prevenzione burnout.
-const fs = require('fs');
-const path = require('path');
 
 const MAX_SAMPLES = 60; // Ring buffer circolare: max 60 campioni (~8 minuti a 8s di intervallo)
 const CONFIDENCE_MIN_TIME_MS = 3 * 60 * 1000; // 3 minuti per considerare la stima affidabile

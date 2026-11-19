@@ -26,3 +26,13 @@ __pycache__/
 *.pyc
 .vscode/
 .idea/
+
+# Screenshot e acquisizioni temporanee (test / runtime)
+public/screenshots/
+public/screenshot*.png
+public/screenshot*.jpg
+public/*.screenshot.png
+public/temp-*.png
+public/*_screen.png
+public/*screen*.png
+public/*_preview.jpg

@@ -19,7 +19,6 @@ const DEFAULT_ALTEREGO = {
 
 let PRIMARY = { ...DEFAULT_PRIMARY };
 let ALTEREGO = { ...DEFAULT_ALTEREGO };
-let PARENT_SESSION = null;
 
 try {
   const cfgPath = path.join(__dirname, 'agents.config.json');
@@ -30,9 +29,6 @@ try {
     }
     if (cfg.alterego) {
       for (const [k, v] of Object.entries(cfg.alterego)) if (v) ALTEREGO[Number(k)] = v;
-    }
-    if (cfg.parent) {
-      PARENT_SESSION = String(cfg.parent).trim();
     }
   }
 } catch (_) {}

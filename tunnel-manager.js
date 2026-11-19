@@ -3,7 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
-const { spawn, execFile, execSync } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const WebSocket = require('ws');
 const routing = require('./routing');
 
