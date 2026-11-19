@@ -127,17 +127,17 @@
     }
     .primary:hover { filter: brightness(1.1); }
 
-    .actions { display: flex; flex-direction: column; gap: 8px; }
+    .actions { display: flex; flex-direction: row; gap: 8px; }
     .action {
-      display: flex; align-items: center; gap: 11px; width: 100%;
-      border: 1px solid var(--line); border-radius: 11px; padding: 11px 13px;
-      background: var(--card2); color: var(--text); font-weight: 700; text-align: left;
+      display: flex; align-items: center; justify-content: center; flex: 1; min-width: 0;
+      border: 1px solid var(--line); border-radius: 9px; padding: 8px 6px;
+      background: var(--card2); color: var(--text); font-size: 18px; line-height: 1.1;
     }
-    .action span:first-child { font-size: 21px; }
     .action:hover { filter: brightness(1.15); }
     .action.blue { border-color: rgba(75,157,255,.5); }
     .action.green { border-color: rgba(63,191,127,.5); }
     .action.purple { border-color: rgba(176,132,245,.5); }
+    .action-note { margin: 8px 0 0; font-size: 11px; color: #8a99ad; }
 
     .logs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 190px; overflow-y: auto; }
     .logs li { background: var(--card2); border-radius: 8px; padding: 7px 10px; font-size: 12px; color: #cbd6e5; word-break: break-word; }
@@ -213,10 +213,11 @@
       <div class="card">
         <h2 data-i18n="quickActions">Quick actions</h2>
         <div class="actions">
-          <button class="action blue" id="btnWalk"><span>🚶</span><span data-i18n="delegation">Watch delegation</span></button>
-          <button class="action green" id="btnMeeting"><span>📢</span><span data-i18n="meeting">Call a meeting</span></button>
-          <button class="action purple" id="btnCoffee"><span>☕</span><span data-i18n="coffee">Coffee break</span></button>
+          <button class="action blue" id="btnWalk" title="Watch delegation" data-i18n-title="delegation">🚶</button>
+          <button class="action green" id="btnMeeting" title="Call a meeting" data-i18n-title="meeting">📢</button>
+          <button class="action purple" id="btnCoffee" title="Coffee break" data-i18n-title="coffee">☕</button>
         </div>
+        <p class="action-note" data-i18n="actionNote">Just for fun — cartoons only, not real tasks.</p>
       </div>
 
       <div class="card">
@@ -270,7 +271,8 @@
         tip: "Click a worker's name to give them a task", workers: 'Your AI workers',
         giveTask: 'Give a task', taskPlaceholder: 'Type a task here... (e.g. create a login page)',
         send: 'Send task', quickActions: 'Quick actions', delegation: 'Watch delegation',
-        meeting: 'Call a meeting', coffee: 'Coffee break', activity: "What's happening",
+        meeting: 'Call a meeting', coffee: 'Coffee break', actionNote: 'Just for fun - cartoons only, not real tasks.',
+        activity: "What's happening",
         noActivity: 'Nothing yet. Try a quick action above 👆',
         welcomeTitle: 'Welcome! 👋',
         welcome1: 'These 4 little people are your AI workers. They really work inside Antigravity.',
@@ -294,7 +296,8 @@
         tip: 'ចុចឈ្មោះអ្នកធ្វើការ ដើម្បីផ្ញើកិច្ចការ', workers: 'អ្នកធ្វើការ AI របស់អ្នក',
         giveTask: 'ផ្តល់កិច្ចការ', taskPlaceholder: 'វាយកិច្ចការនៅទីនេះ... (ឧទាហរណ៍៖ បង្កើតទំព័រចូល)',
         send: 'ផ្ញើកិច្ចការ', quickActions: 'សកម្មភាពរហ័ស', delegation: 'មើលការចាត់កិច្ចការ',
-        meeting: 'ហៅប្រជុំ', coffee: 'សម្រាកកាហ្វេ', activity: 'អ្វីកំពុងកើតឡើង',
+        meeting: 'ហៅប្រជុំ', coffee: 'សម្រាកកាហ្វេ', actionNote: 'គ្រាន់តែលេង - ជារូបភាព មិនមែនកិច្ចការពិតទេ។',
+        activity: 'អ្វីកំពុងកើតឡើង',
         noActivity: 'មិនទាន់មានទេ។ សាកល្បងប៊ូតុងខាងលើ 👆',
         welcomeTitle: 'សូមស្វាគមន៍! 👋',
         welcome1: 'មនុស្សតូចៗទាំង៤នេះជាអ្នកធ្វើការ AI របស់អ្នក។ ពួកគេធ្វើការពិតនៅក្នុង Antigravity។',
@@ -334,6 +337,9 @@
       });
       document.querySelectorAll('[data-i18n-ph]').forEach(el => {
         el.placeholder = t()[el.dataset.i18nPh] || '';
+      });
+      document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        el.title = t()[el.dataset.i18nTitle] || '';
       });
       document.querySelectorAll('[data-lang]').forEach(el => el.classList.toggle('active', el.dataset.lang === lang));
       renderWorkers();
